@@ -33,14 +33,14 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={onClose} />
+        <div className="fixed inset-0 z-20 bg-black/50 dark:bg-black/70 md:hidden" onClick={onClose} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-[#e8e8ed] bg-[#f5f5f7] text-[#1d1d1f] font-sans antialiased transition-transform duration-300 ease-in-out ${
+      <aside className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-[#e8e8ed] dark:border-dark-border bg-[#f5f5f7] dark:bg-dark-bg text-[#1d1d1f] dark:text-dark-text font-sans antialiased transition-transform duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0`}>
       {/* Brand Header */}
-      <div className="flex h-16 items-center gap-2.5 border-b border-[#e8e8ed] px-6 bg-[#f5f5f7]">
+      <div className="flex h-16 items-center gap-2.5 border-b border-[#e8e8ed] dark:border-dark-border px-6 bg-[#f5f5f7] dark:bg-dark-bg">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1d1d1f] font-extrabold text-[13px] text-white tracking-widest">
           CC
         </div>
@@ -52,7 +52,7 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
 
       {/* User Information Display */}
       {broker ? (
-        <div className="p-4 mx-3 my-4 rounded-xl bg-white border border-[#e8e8ed]">
+        <div className="p-4 mx-3 my-4 rounded-xl bg-white dark:bg-dark-card border border-[#e8e8ed] dark:border-dark-border">
           <div className="flex items-center gap-3">
             {broker.photoUrl ? (
               <img
@@ -79,8 +79,8 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
             </div>
           </div>
           
-          {broker.status !== "Aprovado" && (
-            <div className="mt-3.5 rounded-lg bg-[#fff9f2] p-2 text-center border border-[#ffe0b2]">
+                {broker.status !== "Aprovado" && (
+            <div className="mt-3.5 rounded-lg bg-[#fff9f2] dark:bg-amber-900/20 p-2 text-center border border-[#ffe0b2] dark:border-amber-700/50">
               <p className="text-[10px] text-[#ff9500] font-bold leading-normal">
                 Aguardando verificação do CRECI
               </p>
@@ -102,12 +102,12 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
               onClick={() => { setActiveTab(item.id as ActiveTab); onClose(); }}
               className={`flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? "bg-[#1d1d1f] text-white shadow-none"
-                  : "text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                  ? "bg-[#1d1d1f] dark:bg-dark-card text-white shadow-none"
+                  : "text-[#515154] dark:text-dark-muted hover:bg-[#e8e8ed] dark:hover:bg-gray-800 hover:text-[#1d1d1f] dark:hover:text-dark-text"
               }`}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`h-4.5 w-4.5 ${isActive ? "text-white" : "text-[#86868b]"}`} />
+                <Icon className={`h-4.5 w-4.5 ${isActive ? "text-white" : "text-[#86868b] dark:text-dark-muted"}`} />
                 <span className="tracking-tight">{item.label}</span>
               </div>
               {item.badge && item.badge > 0 ? (
@@ -124,13 +124,13 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
         {/* Administrator Access */}
         {broker?.isAdmin && (
           <div className="pt-4 border-t border-[#e8e8ed] mt-4">
-            <span className="px-4 text-[9px] font-bold text-[#86868b] uppercase tracking-widest block mb-2">Administração</span>
+            <span className="px-4 text-[9px] font-bold text-[#86868b] dark:text-dark-muted uppercase tracking-widest block mb-2">Administração</span>
             <button
               onClick={() => { setActiveTab("admin"); onClose(); }}
               className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 activeTab === "admin"
                   ? "bg-[#0071e3] text-white shadow-none"
-                  : "text-[#515154] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                  : "text-[#515154] dark:text-dark-muted hover:bg-[#e8e8ed] dark:hover:bg-gray-800 hover:text-[#1d1d1f] dark:hover:text-dark-text"
               }`}
             >
               <ShieldAlert className="h-4.5 w-4.5 shrink-0" />
@@ -141,7 +141,7 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
       </nav>
 
       {/* Lower Footer branding */}
-      <div className="border-t border-[#e8e8ed] p-3 text-center space-y-2">
+      <div className="border-t border-[#e8e8ed] dark:border-dark-border p-3 text-center space-y-2">
         <button
           onClick={onLogout}
           className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-bold text-red-500 hover:bg-red-50 transition cursor-pointer"

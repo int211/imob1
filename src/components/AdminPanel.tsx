@@ -37,11 +37,13 @@ interface AdminPanelProps {
   activeBroker: Corretor | null;
   onRefreshGlobalState: () => void;
   onSelectPropertyDetail: (prop: any) => void;
+  isDark: boolean;
+  setIsDark: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 type ActiveSubTab = "moderation" | "database" | "config" | "properties" | "locations";
 
-export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelectPropertyDetail }: AdminPanelProps) {
+export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelectPropertyDetail, isDark, setIsDark }: AdminPanelProps) {
   // Global States
   const [metrics, setMetrics] = useState<any>(null);
   const [brokers, setBrokers] = useState<any[]>([]);
@@ -77,6 +79,24 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
   // Moderation States
   const [reviewBroker, setReviewBroker] = useState<any | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [editBroker, setEditBroker] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", whatsapp: "", city: "" });
+  const [userSearch, setUserSearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 20;
+
+  const filteredBrokers = userSearch
+    ? brokers.filter(b =>
+        b.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        b.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        b.whatsapp?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        b.creci?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        b.city?.toLowerCase().includes(userSearch.toLowerCase())
+      )
+    : brokers;
+
+  const totalPages = Math.max(1, Math.ceil(filteredBrokers.length / USERS_PER_PAGE));
+  const pagedBrokers = filteredBrokers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   // Database Connection Panel States
   const [dbStatusData, setDbStatusData] = useState<any>(null);
@@ -260,6 +280,82 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
     }
   };
 
+  const handleDeleteBroker = async (brokerId: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja EXCLUIR "${name}" permanentemente?`)) return;
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/brokers/${brokerId}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchAdminData();
+        onRefreshGlobalState();
+      } else {
+        alert("Erro ao excluir corretor.");
+      }
+    } catch {
+      alert("Erro de rede ao excluir.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleFreezeBroker = async (brokerId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "Congelado" ? "Aprovado" : "Congelado";
+    if (!confirm(`Deseja ${newStatus === "Congelado" ? "CONGELAR" : "DESCONGELAR"} este corretor?`)) return;
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/brokers/${brokerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        await fetchAdminData();
+        onRefreshGlobalState();
+      } else {
+        alert("Erro ao alterar status.");
+      }
+    } catch {
+      alert("Erro de rede.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const openEditBroker = (broker: any) => {
+    console.log("[AdminPanel] openEditBroker called for:", broker.id, broker.name);
+    setEditBroker(broker);
+    setEditForm({
+      name: broker.name || "",
+      email: broker.email || "",
+      phone: broker.phone || "",
+      whatsapp: broker.whatsapp || "",
+      city: broker.city || ""
+    });
+  };
+
+  const handleEditBrokerSave = async () => {
+    if (!editBroker) return;
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/brokers/${editBroker.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        setEditBroker(null);
+        await fetchAdminData();
+        onRefreshGlobalState();
+      } else {
+        alert("Erro ao salvar alterações.");
+      }
+    } catch {
+      alert("Erro de rede.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const handleDbSync = async () => {
     setDbActionLoading(true);
     setDbMessage(null);
@@ -436,16 +532,30 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 dark:text-dark-text">
       {/* Metrics Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Painel de Auditoria & Controle</h2>
-          <p className="text-xs text-gray-500">Gestão de corretores, verificação de CRECI e controle do banco de dados Neon PostgreSQL.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Painel de Auditoria & Controle</h2>
+          <p className="text-xs text-gray-500 dark:text-dark-muted">Gestão de corretores, verificação de CRECI e controle do banco de dados Neon PostgreSQL.</p>
         </div>
+
+        <div className="flex items-center gap-2">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={() => setIsDark(d => !d)}
+          className="p-2 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-sm hover:bg-slate-50 dark:hover:bg-gray-700 transition cursor-pointer"
+          title={isDark ? "Modo Claro" : "Modo Escuro"}
+        >
+          {isDark ? (
+            <svg className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/></svg>
+          ) : (
+            <svg className="h-4 w-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd"/></svg>
+          )}
+        </button>
         
         {/* Toggle between tabs */}
-        <div className="inline-flex bg-[#e8e8ed] p-0.5 rounded-full shrink-0 self-start md:self-auto font-sans">
+        <div className="inline-flex bg-[#e8e8ed] dark:bg-gray-700 p-0.5 rounded-full shrink-0 self-start md:self-auto font-sans">
           <button
             onClick={() => setActiveSubTab("moderation")}
             className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
@@ -501,37 +611,38 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
             Localidades
           </button>
         </div>
+        </div>
       </div>
 
       {metrics && activeSubTab === "moderation" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+          <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600">
               <Users className="h-6 w-6" />
             </span>
             <div>
-              <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Total Corretores</span>
-              <p className="text-xl font-extrabold text-gray-900 leading-none mt-1">{metrics.totalBrokers}</p>
+              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted block tracking-wider">Total Corretores</span>
+              <p className="text-xl font-extrabold text-gray-900 dark:text-dark-text leading-none mt-1">{metrics.totalBrokers}</p>
             </div>
           </div>
 
-          <div className="bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+          <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600">
               <FileCheck className="h-6 w-6" />
             </span>
             <div>
-              <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Aguardando CRECI</span>
-              <p className="text-xl font-extrabold text-gray-900 leading-none mt-1">{metrics.pendingVerifications}</p>
+              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted block tracking-wider">Aguardando CRECI</span>
+              <p className="text-xl font-extrabold text-gray-900 dark:text-dark-text leading-none mt-1">{metrics.pendingVerifications}</p>
             </div>
           </div>
 
-          <div className="bg-white border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+          <div className="bg-white dark:bg-dark-card border dark:border-dark-border rounded-2xl p-4 shadow-sm flex items-center gap-3.5">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600">
               <BookOpen className="h-6 w-6" />
             </span>
             <div>
-              <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Anúncios / Procuras</span>
-              <p className="text-xl font-extrabold text-gray-900 leading-none mt-1">{metrics.totalProperties + metrics.totalDemands}</p>
+              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted block tracking-wider">Anúncios / Procuras</span>
+              <p className="text-xl font-extrabold text-gray-900 dark:text-dark-text leading-none mt-1">{metrics.totalProperties + metrics.totalDemands}</p>
             </div>
           </div>
 
@@ -551,7 +662,191 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
       {/* VIEW: MODERATION TAB                                         */}
       {/* ============================================================ */}
       {activeSubTab === "moderation" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-6">
+          {/* USUÁRIOS - full list table */}
+          <div className="bg-white dark:bg-dark-card rounded-2xl border dark:border-dark-border p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h3 className="text-base font-bold text-gray-900 dark:text-dark-text">Usuários ({brokers.length})</h3>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => { setUserSearch(e.target.value); setUserPage(1); }}
+                    placeholder="Buscar por nome, email, whatsapp..."
+                    className="w-full sm:w-56 pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text text-xs focus:outline-none focus:border-purple-400"
+                  />
+                  <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <button
+                  onClick={fetchAdminData}
+                  disabled={isActionLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-purple-700 hover:bg-purple-50 transition cursor-pointer"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Atualizar
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-dark-border text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted tracking-wider">
+                    <th className="text-left p-2">Nome</th>
+                    <th className="text-left p-2">Email</th>
+                    <th className="text-left p-2">WhatsApp</th>
+                    <th className="text-left p-2">CRECI</th>
+                    <th className="text-left p-2">Cidade</th>
+                    <th className="text-center p-2">Status</th>
+                    <th className="text-center p-2">Admin</th>
+                    <th className="text-right p-2">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedBrokers.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center py-8 text-gray-400">{userSearch ? "Nenhum resultado para esta busca" : "Nenhum corretor cadastrado"}</td></tr>
+                  ) : (
+                    pagedBrokers.map((b, i) => (
+                      <tr key={b.id} className={`${i % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-slate-50/60 dark:bg-gray-800/50'} border-b border-slate-100 dark:border-dark-border hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors`}>
+                        <td className="p-2">
+                          <div className="flex items-center gap-2">
+                            <img src={b.photoUrl || ""} alt="" className="h-6 w-6 rounded-full object-cover shrink-0 border" referrerPolicy="no-referrer" />
+                            <span className="font-semibold text-gray-800 dark:text-dark-text truncate max-w-[120px]">{b.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-2 text-gray-500 dark:text-dark-muted">{b.email}</td>
+                        <td className="p-2 text-gray-500 dark:text-dark-muted font-mono text-[10px]">{b.whatsapp || "-"}</td>
+                        <td className="p-2 text-gray-600 dark:text-dark-muted">{b.creci || "-"}</td>
+                        <td className="p-2 text-gray-600 dark:text-dark-muted">{b.city}</td>
+                        <td className="p-2 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            b.status === "Aprovado" ? "bg-emerald-100 text-emerald-700" :
+                            b.status === "Pendente" ? "bg-amber-100 text-amber-700" :
+                            b.status === "Congelado" ? "bg-blue-100 text-blue-700" :
+                            "bg-red-100 text-red-700"
+                          }`}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td className="p-2 text-center">
+                          <label className="inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!b.isAdmin}
+                              onChange={async () => {
+                                try {
+                                  const res = await fetch("/api/admin/toggle-admin", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                                  });
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    setBrokers(prev => prev.map(bk => bk.id === data.broker.id ? data.broker : bk));
+                                    onRefreshGlobalState();
+                                  }
+                                } catch {}
+                              }}
+                              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                            />
+                          </label>
+                        </td>
+                        <td className="p-2 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {b.status === "Pendente" && (
+                              <button
+                                onClick={() => handleVerifyAction(b.id, "Aprovar")}
+                                disabled={isActionLoading}
+                                title="Aprovar"
+                                className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition cursor-pointer disabled:opacity-50"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleFreezeBroker(b.id, b.status)}
+                              disabled={isActionLoading}
+                              title={b.status === "Congelado" ? "Descongelar" : "Congelar"}
+                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer disabled:opacity-50"
+                            >
+                              <Zap className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => openEditBroker(b)}
+                              disabled={isActionLoading}
+                              title="Editar"
+                              className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition cursor-pointer disabled:opacity-50"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBroker(b.id, b.name)}
+                              disabled={isActionLoading}
+                              title="Excluir"
+                              className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 transition cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-dark-border">
+                <span className="text-[10px] text-gray-400 dark:text-dark-muted font-medium">
+                  Mostrando {(userPage - 1) * USERS_PER_PAGE + 1}-{Math.min(userPage * USERS_PER_PAGE, filteredBrokers.length)} de {filteredBrokers.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                    disabled={userPage === 1}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-gray-600 dark:text-dark-muted hover:bg-slate-100 dark:hover:bg-gray-700 transition cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 7) {
+                      pageNum = i + 1;
+                    } else if (userPage <= 4) {
+                      pageNum = i + 1;
+                    } else if (userPage >= totalPages - 3) {
+                      pageNum = totalPages - 6 + i;
+                    } else {
+                      pageNum = userPage - 3 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setUserPage(pageNum)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                          userPage === pageNum
+                            ? "bg-purple-600 text-white"
+                            : "text-gray-600 dark:text-dark-muted hover:bg-slate-100 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setUserPage(p => Math.min(totalPages, p + 1))}
+                    disabled={userPage === totalPages}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-gray-600 dark:text-dark-muted hover:bg-slate-100 dark:hover:bg-gray-700 transition cursor-pointer disabled:opacity-30 disabled:cursor-default"
+                  >
+                    Próximo
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Side: Pending verification users */}
           <div className="lg:col-span-7 bg-white rounded-2xl border p-5 shadow-sm space-y-4">
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5 border-b border-gray-100 pb-3">
@@ -589,23 +884,29 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={async (e) => { e.stopPropagation();
-                          try {
-                            await fetch("/api/admin/toggle-admin", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
-                            });
-                            await fetchAdminData();
-                            onRefreshGlobalState();
-                          } catch {}
-                        }}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${b.isAdmin ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-gray-100 text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600"}`}
-                      >
-                        {b.isAdmin ? "Admin ✓" : "Admin"}
-                      </button>
+                      <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={!!b.isAdmin}
+                          onChange={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const res = await fetch("/api/admin/toggle-admin", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ brokerId: b.id, isAdmin: e.target.checked })
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                setBrokers(prev => prev.map(bk => bk.id === data.broker.id ? data.broker : bk));
+                                onRefreshGlobalState();
+                              }
+                            } catch {}
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                        />
+                        <span className={`font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
+                      </label>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleVerifyAction(b.id, "Aprovar"); }}
                         disabled={isActionLoading}
@@ -623,9 +924,19 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
             </div>
 
             {/* Full list of all registered users */}
-            <h3 className="text-base font-bold text-gray-900 border-t border-gray-100 pt-5 pb-1">Todos os Corretores</h3>
-            <div className="space-y-2 max-h-56 overflow-y-auto mt-2 text-xs">
-              {brokers.filter(b => b.status !== "Pendente").map((b) => (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-5 pb-1">
+              <h3 className="text-base font-bold text-gray-900">Todos os Corretores ({brokers.length})</h3>
+              <button
+                onClick={fetchAdminData} // Chama a função para recarregar todos os dados
+                disabled={isActionLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-purple-700 hover:bg-purple-50 transition"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Atualizar Lista
+              </button>
+            </div>
+            <div className="space-y-2 mt-2 text-xs">
+              {brokers.map((b) => (
                 <div key={b.id} className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <img src={b.photoUrl || ""} alt="" className="h-7 w-7 rounded-full object-cover shrink-0 border" referrerPolicy="no-referrer" />
@@ -635,23 +946,28 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await fetch("/api/admin/toggle-admin", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
-                          });
-                          await fetchAdminData();
-                          onRefreshGlobalState();
-                        } catch {}
-                      }}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${b.isAdmin ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-gray-100 text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600"}`}
-                    >
-                      {b.isAdmin ? "Admin ✓" : "Admin"}
-                    </button>
+                    <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!b.isAdmin}
+                        onChange={async () => {
+                          try {
+                            const res = await fetch("/api/admin/toggle-admin", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                            });
+                            if (res.ok) {
+                              const data = await res.json();
+                              setBrokers(prev => prev.map(bk => bk.id === data.broker.id ? data.broker : bk));
+                              onRefreshGlobalState();
+                            }
+                          } catch {}
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span className={`font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
+                    </label>
                     {b.status === "Aprovado" ? (
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verificado</span>
@@ -768,7 +1084,7 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
             )}
           </div>
         </div>
-      )}
+      </div>)}
 
       {/* ============================================================ */}
       {/* VIEW: DATABASE CONNECTIONS CONTROL PANEL                    */}
@@ -1495,6 +1811,77 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
       {activeSubTab === "locations" && (
         <LocationsManager />
       )}
+
+      {/* Edit Broker Overlay */}
+      {editBroker && (
+        <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 flex items-center justify-center p-4" onClick={() => setEditBroker(null)}>
+          <div className="bg-white dark:bg-dark-card rounded-2xl border dark:border-dark-border shadow-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-gray-900 dark:text-dark-text">Editar Corretor</h3>
+              <button onClick={() => setEditBroker(null)} className="text-gray-400 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Nome</label>
+                <input
+                  type="text" value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Email</label>
+                <input
+                  type="email" value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Telefone</label>
+                <input
+                  type="text" value={editForm.phone}
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">WhatsApp</label>
+                <input
+                  type="text" value={editForm.whatsapp}
+                  onChange={e => setEditForm(f => ({ ...f, whatsapp: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Cidade</label>
+                <input
+                  type="text" value={editForm.city}
+                  onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setEditBroker(null)}
+                className="flex-1 rounded-xl border border-gray-200 dark:border-dark-border text-gray-600 dark:text-dark-muted py-2.5 font-semibold text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEditBrokerSave}
+                disabled={isActionLoading}
+                className="flex-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white py-2.5 font-semibold text-xs cursor-pointer disabled:opacity-50"
+              >
+                {isActionLoading ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1674,9 +2061,9 @@ function LocationsManager() {
                 )}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+                </div>
+              ))}
+            </div>
     </div>
   );
 }

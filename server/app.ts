@@ -451,6 +451,37 @@ export async function createApp() {
     }
   });
 
+  app.put("/api/demands/:id", (req, res) => {
+    try {
+      const user = getContextUser(req);
+      const demId = req.params.id;
+      const dem = db.getDemand(demId);
+
+      if (!dem) {
+        return res.status(404).json({ error: "Procura não encontrada." });
+      }
+
+      if (dem.createdBy !== user.id && !user.isAdmin) {
+        return res.status(403).json({ error: "Você não tem permissão para editar esta procura." });
+      }
+
+      const updates: any = {};
+      const fields = ["type","purpose","city","maxPrice","bedrooms","parkingSpots","minArea","urgency","paymentMethod","notes","iaRawText","useIa","coverPhoto","status","neighborhoods"];
+      for (const f of fields) {
+        if (req.body[f] !== undefined) updates[f] = req.body[f];
+      }
+
+      const updated = db.updateDemand(demId, updates);
+      if (!updated) {
+        return res.status(500).json({ error: "Falha ao atualizar procura." });
+      }
+
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ==================== EXTERNAL DEMAND IMPORT (API Key) ====================
 
   app.post("/api/demands/import", (req, res) => {
@@ -1096,6 +1127,39 @@ export async function createApp() {
         return res.status(400).json({ error: "brokerId and isAdmin required" });
       }
       const updated = db.updateBroker(brokerId, { isAdmin: Boolean(isAdmin) });
+      res.json({ success: true, broker: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete broker
+  app.delete("/api/admin/brokers/:id", (req, res) => {
+    try {
+      const deleted = db.deleteBroker(req.params.id);
+      if (deleted) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Corretor não encontrado" });
+      }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update broker fields (edit)
+  app.put("/api/admin/brokers/:id", (req, res) => {
+    try {
+      const { name, email, phone, whatsapp, city, creci, status } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (email !== undefined) updates.email = email;
+      if (phone !== undefined) updates.phone = phone;
+      if (whatsapp !== undefined) updates.whatsapp = whatsapp;
+      if (city !== undefined) updates.city = city;
+      if (creci !== undefined) updates.creci = creci;
+      if (status !== undefined) updates.status = status;
+      const updated = db.updateBroker(req.params.id, updates);
       res.json({ success: true, broker: updated });
     } catch (err: any) {
       res.status(500).json({ error: err.message });

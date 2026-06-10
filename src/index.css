@@ -1,9 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Inter", system-ui, -apple-system, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Inter", system-ui, -apple-system, sans-serif;
+  --color-dark-bg: #0f0f12;
+  --color-dark-card: #1a1a20;
+  --color-dark-border: #2a2a35;
+  --color-dark-text: #e4e4e7;
+  --color-dark-muted: #a1a1aa;
 }
 
 @layer utilities {

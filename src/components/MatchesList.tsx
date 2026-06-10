@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, Loader2, MessageSquare, ArrowRight, CheckCircle, Clock, AlertCircle, RefreshCw, Star, Info, ShieldCheck, X } from "lucide-react";
+import { Sparkles, Loader2, MessageSquare, ArrowRight, CheckCircle, Clock, AlertCircle, RefreshCw, Star, Info, ShieldCheck, X, LayoutGrid, List } from "lucide-react";
 import { Match, MatchStatus } from "../types";
 import MarkdownText from "./MarkdownText";
 
@@ -12,6 +12,7 @@ interface MatchesListProps {
 export default function MatchesList({ matches, onRefresh, onStatusChange }: MatchesListProps) {
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "rows">("cards");
   
   // IA advice state managers
   const [loadingInsights, setLoadingInsights] = useState(false);
@@ -128,8 +129,8 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">Matches e Parcerias Inteligentes</h2>
-          <p className="text-sm text-[#86868b]">Veja quais ofertas e procuras foram vinculadas de forma ágil pela IA.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-dark-text">Matches e Parcerias Inteligentes</h2>
+          <p className="text-sm text-[#86868b] dark:text-dark-muted">Veja quais ofertas e procuras foram vinculadas de forma ágil pela IA.</p>
         </div>
         <button
           onClick={async () => {
@@ -138,24 +139,40 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
             setRefreshing(false);
           }}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-full border border-[#d2d2d7] bg-white px-4 py-2 text-xs font-bold text-[#1d1d1f] hover:bg-[#f5f5f7] cursor-pointer transition shadow-none disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card px-4 py-2 text-xs font-bold text-[#1d1d1f] dark:text-dark-text hover:bg-[#f5f5f7] dark:hover:bg-gray-800 cursor-pointer transition shadow-none disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 text-[#515154] ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 text-[#515154] dark:text-dark-muted ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Recalculando..." : "Recalcular Matches"}
         </button>
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5">
+          <button
+            onClick={() => setViewMode("cards")}
+            className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition ${viewMode === "cards" ? "bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text shadow-sm" : "text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text"}`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Cards
+          </button>
+          <button
+            onClick={() => setViewMode("rows")}
+            className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-bold rounded-lg transition ${viewMode === "rows" ? "bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text shadow-sm" : "text-gray-500 dark:text-dark-muted hover:text-gray-700 dark:hover:text-dark-text"}`}
+          >
+            <List className="h-3.5 w-3.5" />
+            Linhas
+          </button>
+        </div>
       </div>
 
       {matches.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center bg-white">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-gray-400">
-            <Info className="h-6 w-6 text-gray-400" />
+        <div className="rounded-2xl border border-dashed border-gray-300 dark:border-dark-border p-12 text-center bg-white dark:bg-dark-card">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 dark:bg-gray-800 text-gray-400 dark:text-dark-muted">
+            <Info className="h-6 w-6 text-gray-400 dark:text-dark-muted" />
           </div>
-          <h3 className="mt-4 text-sm font-semibold text-gray-900">Nenhum Match Encontrado</h3>
-          <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+          <h3 className="mt-4 text-sm font-semibold text-gray-900 dark:text-dark-text">Nenhum Match Encontrado</h3>
+          <p className="mt-1 text-xs text-gray-500 dark:text-dark-muted max-w-sm mx-auto leading-relaxed">
             Nossos algoritmos realizam matches cruzando localização, faixa de preço, tipo de imóvel e cômodos. Cadastre mais imóveis ou procuras ativas!
           </p>
         </div>
-      ) : (
+      ) : viewMode === "cards" ? (
         <div className="grid grid-cols-1 gap-4">
           {matches.map((m: any) => {
             const isOwnerOfProperty = m.propertyCreatedBy === (localStorage.getItem("conectacorretor_user_id") || "admin-id");
@@ -164,11 +181,11 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
             return (
               <div
                 key={m.id}
-                className="group relative rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm hover:shadow-md transition-all duration-200"
+                className="group relative rounded-2xl border border-[#e2e8f0] dark:border-dark-border bg-white dark:bg-dark-card p-4 shadow-sm hover:shadow-md transition-all duration-200"
               >
                 {/* Top: Broker info bar */}
                 {otherBroker && (
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-dark-border">
                     <div className="flex items-center gap-2">
                       <img
                         src={otherBroker.photoUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50&auto=format&fit=crop&q=80"}
@@ -177,15 +194,15 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                         referrerPolicy="no-referrer"
                       />
                       <div>
-                        <p className="text-xs font-semibold text-gray-700 leading-tight">{otherBroker.name}</p>
-                        <p className="text-[10px] text-gray-400">{otherBroker.creci}</p>
+                        <p className="text-xs font-semibold text-gray-700 dark:text-dark-text leading-tight">{otherBroker.name}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-dark-muted">{otherBroker.creci}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${getStatusBadgeClass(m.status)}`}>
                         {m.status}
                       </span>
-                      <span className="text-[10px] text-gray-400">{new Date(m.createdAt).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-dark-muted">{new Date(m.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 )}
@@ -195,7 +212,7 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
 
                   {/* Left: Property photo */}
                   <div className="relative w-full md:w-[140px] shrink-0">
-                    <div className="aspect-[4/3] md:aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                    <div className="aspect-[4/3] md:aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-dark-border">
                       {m.property?.photos?.[0] ? (
                         <img
                           src={m.property.photos[0]}
@@ -205,13 +222,13 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-[10px] text-gray-400 font-medium">Sem foto</span>
+                          <span className="text-[10px] text-gray-400 dark:text-dark-muted font-medium">Sem foto</span>
                         </div>
                       )}
                     </div>
                     <div className="mt-1 text-center">
-                      <p className="text-[10px] font-bold text-gray-900 truncate px-1">{m.property?.neighborhood || ""}</p>
-                      <p className="text-[10px] text-gray-400">{m.property?.city || ""}</p>
+                      <p className="text-[10px] font-bold text-gray-900 dark:text-dark-text truncate px-1">{m.property?.neighborhood || ""}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-dark-muted">{m.property?.city || ""}</p>
                     </div>
                   </div>
 
@@ -219,7 +236,7 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                   <div className="flex flex-col items-center justify-center gap-2 py-2 md:px-4">
                     <div className="relative flex items-center justify-center">
                       <svg width="90" height="90" viewBox="0 0 120 120" className="shrink-0">
-                        <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" strokeWidth="10" />
+                        <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" className="dark:stroke-gray-600" strokeWidth="10" />
                         <circle
                           cx="60" cy="60" r="54"
                           fill="none"
@@ -230,44 +247,44 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                           transform="rotate(-90 60 60)"
                           className="transition-all duration-700"
                         />
-                        <text x="60" y="52" textAnchor="middle" className="text-2xl font-bold" fill="#1d1d1f" fontSize="28" fontWeight="800">
+                        <text x="60" y="52" textAnchor="middle" className="text-2xl font-bold dark:fill-dark-text" fill="#1d1d1f" fontSize="28" fontWeight="800">
                           {m.score}%
                         </text>
-                        <text x="60" y="72" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="600">
+                        <text x="60" y="72" textAnchor="middle" className="dark:fill-dark-muted" fill="#6b7280" fontSize="10" fontWeight="600">
                           MATCH
                         </text>
                       </svg>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="inline-block w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="text-[10px] text-gray-500 font-medium">
+                      <span className="text-[10px] text-gray-500 dark:text-dark-muted font-medium">
                         {isOwnerOfProperty ? "Oferta ↔ Procura" : "Procura ↔ Oferta"}
                       </span>
                     </div>
                   </div>
 
                   {/* Right: Demand info */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 bg-gray-50 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Quem Procura</p>
-                    <p className="font-bold text-gray-900 text-sm leading-snug">
+                  <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-dark-muted uppercase tracking-wider">Quem Procura</p>
+                    <p className="font-bold text-gray-900 dark:text-dark-text text-sm leading-snug">
                       {m.property?.type || "Imóvel"} • {m.demand?.bedrooms || "?"}qt {m.demand?.parkingSpots || "?"}vg
                     </p>
-                    <p className="text-xs text-gray-600 font-medium leading-tight">
-                      Até <span className="font-bold text-gray-900">R$ {Number(m.demand?.maxPrice || 0).toLocaleString("pt-BR")}</span>
+                    <p className="text-xs text-gray-600 dark:text-dark-muted font-medium leading-tight">
+                      Até <span className="font-bold text-gray-900 dark:text-dark-text">R$ {Number(m.demand?.maxPrice || 0).toLocaleString("pt-BR")}</span>
                       {m.demand?.neighborhoods?.length > 0 && (
-                        <> em <span className="font-bold text-gray-900">{m.demand.neighborhoods.slice(0, 2).join(", ")}{m.demand.neighborhoods.length > 2 ? "..." : ""}</span></>
+                        <> em <span className="font-bold text-gray-900 dark:text-dark-text">{m.demand.neighborhoods.slice(0, 2).join(", ")}{m.demand.neighborhoods.length > 2 ? "..." : ""}</span></>
                       )}
                     </p>
-                    <p className="text-[10px] text-gray-400">{m.demand?.paymentMethod || ""}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-dark-muted">{m.demand?.paymentMethod || ""}</p>
                     {m.demand?.notes && (
-                      <p className="text-[10px] text-gray-500 italic mt-1 line-clamp-2">"{m.demand.notes}"</p>
+                      <p className="text-[10px] text-gray-500 dark:text-dark-muted italic mt-1 line-clamp-2">"{m.demand.notes}"</p>
                     )}
                   </div>
 
                 </div>
 
                 {/* Bottom: Actions */}
-                <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-dark-border">
                   <button
                     onClick={() => handleStartWhatsAppContact(m)}
                     className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-4 text-xs font-semibold text-white shadow-sm hover:brightness-105 transition"
@@ -277,7 +294,7 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                   </button>
                   <button
                     onClick={() => handleOpenDetails(m)}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card px-4 text-xs font-semibold text-gray-700 dark:text-dark-text shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                   >
                     Detalhes
                     <ArrowRight className="h-4 w-4" />
@@ -287,64 +304,92 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
             );
           })}
         </div>
+      ) : (
+        <div className="space-y-1">
+          {matches.map((m: any) => {
+            const isOwnerOfProperty = m.propertyCreatedBy === (localStorage.getItem("conectacorretor_user_id") || "admin-id");
+            const otherBroker = isOwnerOfProperty ? m.brokerDemand : m.brokerProperty;
+            return (
+              <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-dark-border hover:bg-gray-50 dark:hover:bg-gray-800 transition text-xs">
+                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-[10px] font-extrabold shrink-0 ${getScoreColorClass(m.score)}`}>{m.score}%</span>
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  <span className="font-semibold text-gray-900 dark:text-dark-text truncate max-w-[200px]">{m.propertyTitle || m.property?.neighborhood || "—"}</span>
+                  <span className="text-gray-400 dark:text-dark-muted hidden sm:inline">•</span>
+                  <span className="text-gray-500 dark:text-dark-muted hidden sm:inline">{m.property?.city || ""}</span>
+                  <span className="text-gray-400 dark:text-dark-muted hidden md:inline">•</span>
+                  <span className="text-gray-500 dark:text-dark-muted hidden md:inline">{m.demand?.bedrooms || "?"}qt</span>
+                  <span className="text-gray-400 dark:text-dark-muted hidden lg:inline">•</span>
+                  <span className="text-gray-500 dark:text-dark-muted hidden lg:inline">até R$ {Number(m.demand?.maxPrice || 0).toLocaleString("pt-BR")}</span>
+                </div>
+                <span className={`inline-flex rounded-full border px-2 py-0.5 text-[9px] font-semibold ${getStatusBadgeClass(m.status)}`}>{m.status}</span>
+                {otherBroker && (
+                  <span className="text-[10px] text-gray-400 dark:text-dark-muted hidden md:inline max-w-[120px] truncate" title={otherBroker.name}>{otherBroker.name}</span>
+                )}
+                <span className="text-[9px] text-gray-300 dark:text-dark-muted hidden lg:inline">{new Date(m.createdAt).toLocaleDateString()}</span>
+                <button onClick={() => handleStartWhatsAppContact(m)} className="shrink-0 rounded-lg bg-[#25D366] px-2.5 py-1 text-[9px] font-bold text-white hover:brightness-105 transition">WhatsApp</button>
+                <button onClick={() => handleOpenDetails(m)} className="shrink-0 rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card px-2.5 py-1 text-[9px] font-bold text-gray-600 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-gray-800 transition">Detalhes</button>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Extreme Detail Slider / Dialog (With IA justifications of match) */}
       {selectedMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 transition-all overflow-y-auto">
-          <div className="relative w-full max-w-3xl rounded-2xl bg-white border border-gray-100 shadow-2xl p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border shadow-2xl p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
             
             {/* Header close */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-4">
               <div className="flex items-center gap-3">
                 <div className={`p-3 rounded-2xl border font-mono font-bold text-lg ${getScoreColorClass(selectedMatch.score)}`}>
                   {selectedMatch.score}%
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Detalhes da Parceria CC-{selectedMatch.id.slice(-4)}</h3>
-                  <p className="text-xs text-gray-400">Match imobiliário calculado em {new Date(selectedMatch.createdAt).toLocaleDateString()}</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-dark-text">Detalhes da Parceria CC-{selectedMatch.id.slice(-4)}</h3>
+                  <p className="text-xs text-gray-400 dark:text-dark-muted">Match imobiliário calculado em {new Date(selectedMatch.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedMatch(null)}
-                className="rounded-xl border border-gray-200 bg-white p-2.5 text-gray-500 hover:text-black hover:bg-slate-50 transition"
+                className="rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card p-2.5 text-gray-500 dark:text-dark-muted hover:text-black dark:hover:text-dark-text hover:bg-slate-50 dark:hover:bg-gray-800 transition"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* AI Insights Segment (PRD Section 6.7 match score generated by IA) */}
-            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-4.5 space-y-3">
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-4.5 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-7.5 w-7.5 items-center justify-center rounded-lg bg-purple-600 text-white">
                   <Sparkles className="h-4.5 w-4.5 text-white fill-purple-100" />
                 </span>
                 <div>
-                  <h4 className="font-bold text-gray-900 text-sm">Parecer do Consultor IA ConectaCorretor</h4>
-                  <span className="text-[9px] text-purple-600 font-bold uppercase tracking-wider block">Estudo de Viabilidade B2B</span>
+                  <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm">Parecer do Consultor IA ConectaCorretor</h4>
+                  <span className="text-[9px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider block">Estudo de Viabilidade B2B</span>
                 </div>
               </div>
 
               {loadingInsights && (
                 <div className="py-6 text-center space-y-3">
                   <Loader2 className="h-6 w-6 animate-spin text-purple-600 mx-auto" />
-                  <p className="text-xs text-gray-500 font-medium">A IA está analisando os diferenciais do imóvel e valores de partilha...</p>
+                  <p className="text-xs text-gray-500 dark:text-dark-muted font-medium">A IA está analisando os diferenciais do imóvel e valores de partilha...</p>
                 </div>
               )}
 
               {matchInsights && !loadingInsights && (
-                <div className="space-y-3 text-xs leading-relaxed text-gray-700">
-                  <div className="bg-white p-3 rounded-xl border border-purple-100/60 shadow-sm space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-purple-800">Por que é compatível?</span>
-                    <MarkdownText text={matchInsights.explanation} className="text-gray-700 font-medium" />
+                <div className="space-y-3 text-xs leading-relaxed text-gray-700 dark:text-dark-text">
+                  <div className="bg-white dark:bg-dark-card p-3 rounded-xl border border-purple-100/60 dark:border-purple-900/30 shadow-sm space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-purple-800 dark:text-purple-300">Por que é compatível?</span>
+                    <MarkdownText text={matchInsights.explanation} className="text-gray-700 dark:text-dark-text font-medium" />
                   </div>
 
-                  <div className="bg-white p-3 rounded-xl border border-purple-100/60 shadow-sm space-y-1">
-                    <span className="text-[10px] uppercase font-bold text-purple-800">Conselho Consultivo de Parceria</span>
-                    <MarkdownText text={matchInsights.advice} className="text-gray-700 font-medium" />
+                  <div className="bg-white dark:bg-dark-card p-3 rounded-xl border border-purple-100/60 dark:border-purple-900/30 shadow-sm space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-purple-800 dark:text-purple-300">Conselho Consultivo de Parceria</span>
+                    <MarkdownText text={matchInsights.advice} className="text-gray-700 dark:text-dark-text font-medium" />
                   </div>
 
-                  <div className="text-[10px] text-purple-500 font-medium italic">
+                  <div className="text-[10px] text-purple-500 dark:text-purple-400 font-medium italic">
                     <MarkdownText text={matchInsights.scoreExplanation} />
                   </div>
                 </div>
@@ -355,68 +400,68 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* Offer Panel */}
-              <div className="rounded-xl border border-gray-200 p-4 space-y-3 bg-slate-50/50">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+              <div className="rounded-xl border border-gray-200 dark:border-dark-border p-4 space-y-3 bg-slate-50/50 dark:bg-dark-card/50">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-2">
                   <span className="h-2 w-2 rounded-full bg-blue-600" />
-                  <h5 className="font-bold text-xs text-blue-900 uppercase">Imóvel Disponível</h5>
+                  <h5 className="font-bold text-xs text-blue-900 dark:text-blue-300 uppercase">Imóvel Disponível</h5>
                 </div>
                 {selectedMatch.property ? (
                   <div className="text-xs space-y-2">
-                    <p className="font-bold text-gray-900 leading-tight">{selectedMatch.property.title}</p>
-                    <p className="text-gray-500 font-medium">Bairro: <b>{selectedMatch.property.neighborhood}</b> (Cidade: {selectedMatch.property.city})</p>
-                    <p className="font-bold text-gray-800">Preço: R$ {selectedMatch.property.price.toLocaleString("pt-BR")}</p>
-                    <div className="flex gap-4 text-gray-500">
+                    <p className="font-bold text-gray-900 dark:text-dark-text leading-tight">{selectedMatch.property.title}</p>
+                    <p className="text-gray-500 dark:text-dark-muted font-medium">Bairro: <b>{selectedMatch.property.neighborhood}</b> (Cidade: {selectedMatch.property.city})</p>
+                    <p className="font-bold text-gray-800 dark:text-dark-text">Preço: R$ {selectedMatch.property.price.toLocaleString("pt-BR")}</p>
+                    <div className="flex gap-4 text-gray-500 dark:text-dark-muted">
                       <span>Quartos: {selectedMatch.property.bedrooms}</span>
                       <span>Vagas: {selectedMatch.property.parkingSpots}</span>
                       <span>Área: {selectedMatch.property.area} m²</span>
                     </div>
                     {selectedMatch.property.commission && (
-                      <div className="bg-blue-50 text-blue-800 rounded-lg p-2 font-semibold">
+                      <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-lg p-2 font-semibold">
                         Comissão de Parceria: {selectedMatch.property.commission}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 italic">Disponibilidade de dados corrompida</p>
+                  <p className="text-xs text-gray-400 dark:text-dark-muted italic">Disponibilidade de dados corrompida</p>
                 )}
               </div>
 
               {/* Demand Panel */}
-              <div className="rounded-xl border border-gray-200 p-4 space-y-3 bg-slate-50/50">
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+              <div className="rounded-xl border border-gray-200 dark:border-dark-border p-4 space-y-3 bg-slate-50/50 dark:bg-dark-card/50">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-dark-border pb-2">
                   <span className="h-2 w-2 rounded-full bg-indigo-600" />
-                  <h5 className="font-bold text-xs text-indigo-900 uppercase">Cadastros da Procura</h5>
+                  <h5 className="font-bold text-xs text-indigo-900 dark:text-indigo-300 uppercase">Cadastros da Procura</h5>
                 </div>
                 {selectedMatch.demand ? (
                   <div className="text-xs space-y-2">
-                    <p className="font-bold text-gray-900 leading-tight">Procura ID: {selectedMatch.demand.id.toUpperCase().slice(-5)}</p>
-                    <p className="text-gray-500 font-medium">Locais de Interesse: <b>{selectedMatch.demand.neighborhoods.join(", ") || "Qualquer bairro"}</b></p>
-                    <p className="font-bold text-gray-800">Preço Máximo: R$ {selectedMatch.demand.maxPrice.toLocaleString("pt-BR")}</p>
-                    <div className="flex gap-4 text-gray-500">
+                    <p className="font-bold text-gray-900 dark:text-dark-text leading-tight">Procura ID: {selectedMatch.demand.id.toUpperCase().slice(-5)}</p>
+                    <p className="text-gray-500 dark:text-dark-muted font-medium">Locais de Interesse: <b>{selectedMatch.demand.neighborhoods.join(", ") || "Qualquer bairro"}</b></p>
+                    <p className="font-bold text-gray-800 dark:text-dark-text">Preço Máximo: R$ {selectedMatch.demand.maxPrice.toLocaleString("pt-BR")}</p>
+                    <div className="flex gap-4 text-gray-500 dark:text-dark-muted">
                       <span>Min Quartos: {selectedMatch.demand.bedrooms}</span>
                       <span>Min Vagas: {selectedMatch.demand.parkingSpots}</span>
                       <span>Min Área: {selectedMatch.demand.minArea} m²</span>
                     </div>
-                    <p className="text-gray-600 font-medium">Forma Pagto: {selectedMatch.demand.paymentMethod}</p>
+                    <p className="text-gray-600 dark:text-dark-muted font-medium">Forma Pagto: {selectedMatch.demand.paymentMethod}</p>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 italic">Dados da procura não localizados</p>
+                  <p className="text-xs text-gray-400 dark:text-dark-muted italic">Dados da procura não localizados</p>
                 )}
               </div>
             </div>
 
             {/* Negotiation History & Shift Status (PRD Section 6.9 Statuses) */}
-            <div className="border-t border-gray-150 pt-5 space-y-4">
-              <h4 className="font-bold text-gray-900 text-sm">Atualizar Status da Parceria B2B</h4>
+            <div className="border-t border-gray-150 dark:border-dark-border pt-5 space-y-4">
+              <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm">Atualizar Status da Parceria B2B</h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Status de Negociação</label>
+                    <label className="block text-[10px] font-bold text-gray-500 dark:text-dark-muted uppercase tracking-widest mb-1">Status de Negociação</label>
                     <select
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value as MatchStatus)}
-                      className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm"
+                      className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2 text-sm shadow-sm dark:bg-dark-card dark:text-dark-text"
                     >
                       <option value="Novo">Novo (Gerado automaticamente)</option>
                       <option value="Visualizado">Visualizado</option>
@@ -428,13 +473,13 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Anotações / Histórico de Parceria</label>
+                    <label className="block text-[10px] font-bold text-gray-500 dark:text-dark-muted uppercase tracking-widest mb-1">Anotações / Histórico de Parceria</label>
                     <textarea
                       rows={2}
                       value={transitionNotes}
                       placeholder="Adicione um detalhe do status da conversa, ex: 'Agendamos visita com comprador para amanhã às 14h.'"
                       onChange={(e) => setTransitionNotes(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm shadow-sm"
+                      className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2 text-sm shadow-sm dark:bg-dark-card dark:text-dark-text"
                     />
                   </div>
 
@@ -442,29 +487,29 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
                     type="button"
                     onClick={handleSaveStatus}
                     disabled={statusLoading}
-                    className="rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold px-6 py-3 border-0 transition cursor-pointer disabled:bg-slate-300"
+                    className="rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold px-6 py-3 border-0 transition cursor-pointer disabled:bg-slate-300 dark:disabled:bg-slate-700"
                   >
                     {statusLoading ? "Salvando..." : "Registrar Novo Status"}
                   </button>
                 </div>
 
                 {/* Audit history logs */}
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3 overflow-y-auto max-h-56">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 block mb-1">Histórico de Alterações</span>
-                  <div className="space-y-3.5 relative pl-3 border-l border-gray-200">
+                <div className="bg-slate-50 dark:bg-gray-800/50 border border-slate-100 dark:border-dark-border rounded-xl p-4.5 space-y-3 overflow-y-auto max-h-56">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-dark-muted block mb-1">Histórico de Alterações</span>
+                  <div className="space-y-3.5 relative pl-3 border-l border-gray-200 dark:border-dark-border">
                     {selectedMatch.history?.map((hist: any, index: number) => (
                       <div key={index} className="relative text-xs space-y-1">
                         {/* Bullet indicators */}
-                        <div className="absolute -left-5 top-1 h-3 w-3 rounded-full border bg-white border-blue-500 shrink-0" />
+                        <div className="absolute -left-5 top-1 h-3 w-3 rounded-full border bg-white dark:bg-dark-card border-blue-500 dark:border-blue-400 shrink-0" />
                         
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-gray-800">{hist.status}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">
+                          <span className="font-bold text-gray-800 dark:text-dark-text">{hist.status}</span>
+                          <span className="text-[10px] text-gray-400 dark:text-dark-muted font-medium">
                             {new Date(hist.updatedAt).toLocaleTimeString()}
                           </span>
                         </div>
-                        <p className="text-gray-500 font-medium">Por: <b>{hist.updatedBy}</b></p>
-                        {hist.notes && <p className="text-gray-600 bg-white/60 p-2.5 rounded-lg border border-slate-100/50 leading-relaxed italic">{hist.notes}</p>}
+                        <p className="text-gray-500 dark:text-dark-muted font-medium">Por: <b>{hist.updatedBy}</b></p>
+                        {hist.notes && <p className="text-gray-600 dark:text-dark-text bg-white/60 dark:bg-dark-card/60 p-2.5 rounded-lg border border-slate-100/50 dark:border-dark-border leading-relaxed italic">{hist.notes}</p>}
                       </div>
                     ))}
                   </div>
@@ -473,11 +518,11 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
             </div>
 
             {/* Dialog Footer Actions */}
-            <div className="flex gap-3 pt-4 border-t border-gray-100 justify-end">
+            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-dark-border justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedMatch(null)}
-                className="rounded-xl border border-gray-300 bg-white px-6 py-2.5 font-semibold text-gray-700 text-xs hover:bg-gray-50"
+                className="rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card px-6 py-2.5 font-semibold text-gray-700 dark:text-dark-text text-xs hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Fechar
               </button>

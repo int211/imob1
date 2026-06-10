@@ -19,6 +19,6 @@ interface MarkdownTextProps {
 
 export default function MarkdownText({ text, className }: MarkdownTextProps) {
   return (
-    <div className={className} dangerouslySetInnerHTML={{ __html: mdToHtml(text) }} />
+    <div className={`${className || ""} dark:text-dark-text`} dangerouslySetInnerHTML={{ __html: mdToHtml(text) }} />
   );
 }

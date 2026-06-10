@@ -850,6 +850,26 @@ export class OfflineDB {
     throw new Error("Broker not found");
   }
 
+  public deleteBroker(id: string): boolean {
+    const lenBefore = this.data.brokers.length;
+    this.data.brokers = this.data.brokers.filter(b => b.id !== id);
+    this.data.properties = this.data.properties.filter(p => p.createdBy !== id);
+    this.data.demands = this.data.demands.filter(d => d.createdBy !== id);
+    this.data.matches = this.data.matches.filter(m => {
+      const prop = this.data.properties.find(p => p.id === m.propertyId);
+      const dem = this.data.demands.find(d => d.id === m.demandId);
+      return prop || dem;
+    });
+    this.data.notifications = this.data.notifications.filter(n => n.brokerId !== id);
+    this.saveLocal();
+    this.executeMySQLWrite("DELETE FROM notifications WHERE broker_id = ?", [id]);
+    this.executeMySQLWrite("DELETE FROM favorites WHERE broker_id = ?", [id]);
+    this.executeMySQLWrite("DELETE FROM ratings WHERE broker_id = ?", [id]);
+    this.executeMySQLWrite("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
+    this.executeMySQLWrite("DELETE FROM corretores WHERE id = ?", [id]);
+    return this.data.brokers.length < lenBefore;
+  }
+
   // Ratings CR
   public createRating(rating: Rating): Rating {
     this.data.ratings.push(rating);
@@ -1044,6 +1064,52 @@ export class OfflineDB {
     }
 
     return this.data.demands.length < lenBefore;
+  }
+
+  public updateDemand(id: string, updates: Partial<Demand>): Demand | undefined {
+    const dem = this.getDemand(id);
+    if (!dem) return undefined;
+
+    Object.assign(dem, updates);
+    this.saveLocal();
+
+    if (pool) {
+      const cols: string[] = [];
+      const params: any[] = [];
+      for (const [key, val] of Object.entries(updates)) {
+        if (key === "id" || key === "neighborhoods" || key === "createdBy") continue;
+        let dbCol = "";
+        let dbVal: any = val;
+        if (key === "maxPrice") { dbCol = "max_price"; } else
+        if (key === "parkingSpots") { dbCol = "parking_spots"; } else
+        if (key === "minArea") { dbCol = "min_area"; } else
+        if (key === "paymentMethod") { dbCol = "payment_method"; } else
+        if (key === "iaRawText") { dbCol = "ia_raw_text"; } else
+        if (key === "useIa") { dbCol = "use_ia"; dbVal = val ? 1 : 0; } else
+        if (key === "coverPhoto") { dbCol = "cover_photo"; } else
+        { dbCol = key; }
+
+        cols.push(`${dbCol} = ?`);
+        params.push(dbVal === undefined ? null : dbVal);
+      }
+      if (cols.length > 0) {
+        params.push(id);
+        this.executeMySQLWrite(`UPDATE demands SET ${cols.join(", ")} WHERE id = ?`, params).catch(err => {
+          console.error("Failed MySQL update for demand:", id, err);
+        });
+      }
+      if (updates.neighborhoods) {
+        this.executeMySQLWrite("DELETE FROM demand_neighborhoods WHERE demand_id = ?", [id]).then(() => {
+          if (pool && updates.neighborhoods) {
+            for (const n of updates.neighborhoods) {
+              this.executeMySQLWrite("INSERT INTO demand_neighborhoods (demand_id, neighborhood) VALUES (?, ?)", [id, n]);
+            }
+          }
+        });
+      }
+    }
+
+    return dem;
   }
 
   // Matches CRUD

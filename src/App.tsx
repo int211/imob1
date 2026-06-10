@@ -36,6 +36,26 @@ export default function App() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
+  // Dark Mode
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("theme") === "dark" ||
+        (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
   // Dashboard and state loading indicators
   const [loading, setLoading] = useState(true);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -49,7 +69,9 @@ export default function App() {
   
   // New listing modals triggers
   const [showPropertyForm, setShowPropertyForm] = useState(false);
+  const [editProperty, setEditProperty] = useState<any | null>(null);
   const [showDemandForm, setShowDemandForm] = useState(false);
+  const [editDemand, setEditDemand] = useState<any | null>(null);
   const [selectedListingDetail, setSelectedListingDetail] = useState<any | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
@@ -547,17 +569,17 @@ export default function App() {
 
   if (loading && simulatedBrokers.length === 0) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-gray-800/50">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm font-semibold text-gray-500">Iniciando ConectaCorretor B2B...</p>
+          <p className="text-sm font-semibold text-gray-500 dark:text-dark-muted">Iniciando ConectaCorretor B2B...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] antialiased font-sans flex font-normal leading-relaxed">
+    <div className="min-h-screen bg-[#f5f5f7] dark:bg-dark-bg text-[#1d1d1f] dark:text-dark-text antialiased font-sans flex font-normal leading-relaxed">
       
       {/* Sidebar navigation */}
       <Sidebar 
@@ -576,21 +598,21 @@ export default function App() {
       <main className="flex-1 md:pl-64 min-h-screen pb-16 md:pb-0">
         
         {/* Global sticky bar */}
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[#e8e8ed] bg-white/80 backdrop-blur-md px-4 md:px-8">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[#e8e8ed] dark:border-dark-border bg-white/80 dark:bg-dark-card/80 backdrop-blur-md px-4 md:px-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              className="md:hidden rounded-lg p-2 text-slate-600 dark:text-dark-muted hover:bg-slate-100 dark:hover:bg-gray-800 transition cursor-pointer"
               aria-label="Abrir menu"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-xs font-semibold text-[#86868b]">
+            <span className="text-xs font-semibold text-[#86868b] dark:text-dark-muted">
               Ambiente de Demonstração Imobiliária
             </span>
             <button
               onClick={() => setIsSwitchBrokerOpen(true)}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1d1d1f] bg-white hover:bg-[#f5f5f7] rounded-full px-3 py-1.5 border border-[#d2d2d7] transition cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1d1d1f] dark:text-dark-text bg-white dark:bg-dark-card hover:bg-[#f5f5f7] dark:hover:bg-gray-700 rounded-full px-3 py-1.5 border border-[#d2d2d7] dark:border-dark-border transition cursor-pointer"
             >
               <RefreshCw className="h-3 w-3" />
               Alternar Corretor Ativo
@@ -598,11 +620,23 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setIsDark(d => !d)}
+              className="p-2 rounded-xl bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border shadow-sm hover:bg-slate-50 dark:hover:bg-gray-700 transition cursor-pointer"
+              title={isDark ? "Modo Claro" : "Modo Escuro"}
+            >
+              {isDark ? (
+                <svg className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/></svg>
+              ) : (
+                <svg className="h-4 w-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z" clipRule="evenodd"/></svg>
+              )}
+            </button>
             {/* Notification alert bells dropdown trigger */}
             <div className="relative">
               <button
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
+                className="relative rounded-full p-2 text-slate-500 dark:text-dark-muted hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 transition"
               >
                 <Bell className="h-5.5 w-5.5" />
                 {unreadNotifications.length > 0 && (
@@ -613,9 +647,9 @@ export default function App() {
               </button>
 
               {isNotificationOpen && (
-                <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-xl ring-1 ring-black/5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                    <h4 className="font-extrabold text-gray-900 text-xs">Alertas da Rede B2B</h4>
+                <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-[#e2e8f0] dark:border-dark-border bg-white dark:bg-dark-card p-4 shadow-xl ring-1 ring-black/5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-2">
+                    <h4 className="font-extrabold text-gray-900 dark:text-dark-text text-xs">Alertas da Rede B2B</h4>
                     {unreadNotifications.length > 0 && (
                       <button
                         onClick={handleMarkAllNotificationsRead}
@@ -628,7 +662,7 @@ export default function App() {
 
                   <div className="space-y-3.5 max-h-64 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="text-[11px] text-gray-400 italic text-center py-4">Nenhum alerta recebido</p>
+                      <p className="text-[11px] text-gray-400 dark:text-dark-muted italic text-center py-4">Nenhum alerta recebido</p>
                     ) : (
                       notifications.slice(0, 8).map((not) => (
                         <div
@@ -640,14 +674,14 @@ export default function App() {
                             }
                             setIsNotificationOpen(false);
                           }}
-                          className={`p-2.5 rounded-xl text-[11px] leading-relaxed relative cursor-pointer hover:bg-slate-50 transition border ${
-                            not.read ? "bg-white border-transparent text-gray-500" : "bg-blue-50/40 border-blue-100 text-gray-800"
+                          className={`p-2.5 rounded-xl text-[11px] leading-relaxed relative cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 transition border ${
+                            not.read ? "bg-white dark:bg-dark-card border-transparent text-gray-500 dark:text-dark-muted" : "bg-blue-50/40 dark:bg-blue-900/20 border-blue-100 text-gray-800 dark:text-dark-text"
                           }`}
                         >
                           {!not.read && <span className="absolute top-2.5 left-2.5 h-1.5 w-1.5 rounded-full bg-blue-500" />}
                           <div className={not.read ? "pl-2" : "pl-4"}>
-                            <p className="font-bold text-gray-900">{not.title}</p>
-                            <p className="text-gray-500 mt-0.5">{not.message}</p>
+                            <p className="font-bold text-gray-900 dark:text-dark-text">{not.title}</p>
+                            <p className="text-gray-500 dark:text-dark-muted mt-0.5">{not.message}</p>
                           </div>
                         </div>
                       ))
@@ -661,11 +695,11 @@ export default function App() {
             {activeBroker && (
               <button
                 onClick={() => setActiveTab("perfil")}
-                className="flex items-center gap-2 border-l border-slate-200 pl-4 hover:bg-slate-50 pr-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                className="flex items-center gap-2 border-l border-slate-200 dark:border-dark-border pl-4 hover:bg-slate-50 dark:hover:bg-gray-800 pr-3 py-1.5 rounded-xl transition-all cursor-pointer"
               >
                 <div className="text-right">
-                  <p className="text-xs font-bold text-gray-900">{activeBroker.name}</p>
-                  <span className="text-[10px] text-slate-400 font-semibold">{activeBroker.creci}</span>
+                  <p className="text-xs font-bold text-gray-900 dark:text-dark-text">{activeBroker.name}</p>
+                  <span className="text-[10px] text-slate-400 dark:text-dark-muted font-semibold">{activeBroker.creci}</span>
                 </div>
                 <img
                   src={activeBroker.photoUrl}
@@ -688,10 +722,10 @@ export default function App() {
               {/* Dynamic Header indicators */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">
                     Olá, Corretor {activeBroker?.name.split(" ")[0]}!
                   </h2>
-                  <p className="text-xs text-gray-500 mt-1 leading-normal">
+                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-1 leading-normal">
                     Seu hub centralizado de captações e buscas. Veja matches imediatos calculados pela IA da rede.
                   </p>
                 </div>
@@ -699,9 +733,9 @@ export default function App() {
                 <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => setShowDemandForm(true)}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#d2d2d7] bg-white px-4 text-xs font-bold text-[#1d1d1f] hover:bg-[#f5f5f7] cursor-pointer transition-all duration-155"
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card px-4 text-xs font-bold text-[#1d1d1f] dark:text-dark-text hover:bg-[#f5f5f7] dark:hover:bg-gray-700 cursor-pointer transition-all duration-155"
                   >
-                    <SlidersHorizontal className="h-3.5 w-3.5 text-[#515154]" />
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-[#515154] dark:text-dark-muted" />
                     Cadastrar Procura / IA
                   </button>
                   <button
@@ -722,7 +756,7 @@ export default function App() {
                       <AlertCircle className="h-4.5 w-4.5" />
                       Selo de Corretor Verificado Pendente
                     </p>
-                    <p className="text-[#515154] font-medium leading-relaxed">
+                    <p className="text-[#515154] dark:text-dark-muted font-medium leading-relaxed">
                       Somente corretores com CRECI aprovado e verificado podem anunciar imóveis ou procuras ativas. Faça o upload das fotos da carteira e RG para aprovação imediata do administrador!
                     </p>
                   </div>
@@ -737,19 +771,19 @@ export default function App() {
 
               {/* KPI metrics row */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <button onClick={() => setActiveTab("imoveis")} className="bg-white border border-[#e8e8ed] rounded-2xl p-5 space-y-3 shadow-none text-left cursor-pointer hover:shadow-md transition w-full">
-                  <span className="text-[10px] uppercase font-bold text-[#86868b] tracking-wider">Meus Imóveis Ativos</span>
+                <button onClick={() => setActiveTab("imoveis")} className="bg-white dark:bg-dark-card border border-[#e8e8ed] dark:border-dark-border rounded-2xl p-5 space-y-3 shadow-none text-left cursor-pointer hover:shadow-md transition w-full">
+                  <span className="text-[10px] uppercase font-bold text-[#86868b] dark:text-dark-muted tracking-wider">Meus Imóveis Ativos</span>
                   <div className="flex items-baseline gap-1.5">
-                    <p className="text-3xl font-extrabold text-[#1d1d1f] tracking-tight leading-none">{stats.activeProperties}</p>
-                    <span className="text-xs text-[#86868b] font-medium">anúncios</span>
+                    <p className="text-3xl font-extrabold text-[#1d1d1f] dark:text-dark-text tracking-tight leading-none">{stats.activeProperties}</p>
+                    <span className="text-xs text-[#86868b] dark:text-dark-muted font-medium">anúncios</span>
                   </div>
                 </button>
 
-                <button onClick={() => setActiveTab("procuras")} className="bg-white border border-[#e8e8ed] rounded-2xl p-5 space-y-3 shadow-none text-left cursor-pointer hover:shadow-md transition w-full">
-                  <span className="text-[10px] uppercase font-bold text-[#86868b] tracking-wider">Minhas Procuras Ativas</span>
+                <button onClick={() => setActiveTab("procuras")} className="bg-white dark:bg-dark-card border border-[#e8e8ed] dark:border-dark-border rounded-2xl p-5 space-y-3 shadow-none text-left cursor-pointer hover:shadow-md transition w-full">
+                  <span className="text-[10px] uppercase font-bold text-[#86868b] dark:text-dark-muted tracking-wider">Minhas Procuras Ativas</span>
                   <div className="flex items-baseline gap-1.5">
-                    <p className="text-3xl font-extrabold text-[#1d1d1f] tracking-tight leading-none">{stats.activeDemands}</p>
-                    <span className="text-xs text-[#86868b] font-medium">clientes</span>
+                    <p className="text-3xl font-extrabold text-[#1d1d1f] dark:text-dark-text tracking-tight leading-none">{stats.activeDemands}</p>
+                    <span className="text-xs text-[#86868b] dark:text-dark-muted font-medium">clientes</span>
                   </div>
                 </button>
 
@@ -764,18 +798,18 @@ export default function App() {
                   </div>
                 </button>
 
-                <div className="bg-white border border-[#e8e8ed] rounded-2xl p-5 space-y-3 shadow-none">
-                  <span className="text-[10px] uppercase font-bold text-[#86868b] tracking-wider">Visualizações Totais</span>
+                <div className="bg-white dark:bg-dark-card border border-[#e8e8ed] dark:border-dark-border rounded-2xl p-5 space-y-3 shadow-none">
+                  <span className="text-[10px] uppercase font-bold text-[#86868b] dark:text-dark-muted tracking-wider">Visualizações Totais</span>
                   <div className="flex items-baseline gap-1.5">
-                    <p className="text-3xl font-extrabold text-[#1d1d1f] tracking-tight leading-none">{stats.views}</p>
-                    <span className="text-xs text-[#86868b] font-medium">visitas</span>
+                    <p className="text-3xl font-extrabold text-[#1d1d1f] dark:text-dark-text tracking-tight leading-none">{stats.views}</p>
+                    <span className="text-xs text-[#86868b] dark:text-dark-muted font-medium">visitas</span>
                   </div>
                 </div>
               </div>
 
               {/* Feed Filters Tabs */}
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e8e8ed] pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e8e8ed] dark:border-dark-border pb-3">
                   <div className="flex items-center gap-1.5">
                     {(["tudo", "ofertas", "demandas"] as const).map((filter) => (
                       <button
@@ -784,7 +818,7 @@ export default function App() {
                         className={`rounded-full px-4 py-2 text-xs font-bold capitalize transition-all cursor-pointer ${
                           feedFilter === filter
                             ? "bg-[#1d1d1f] text-white shadow-none"
-                            : "text-[#86868b] hover:bg-[#e8e8ed] hover:text-[#1d1d1f]"
+                            : "text-[#86868b] dark:text-dark-muted hover:bg-[#e8e8ed] hover:text-[#1d1d1f] dark:text-dark-text"
                         }`}
                       >
                         {filter}
@@ -793,15 +827,15 @@ export default function App() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5 bg-[#f5f5f7] rounded-lg p-0.5 border border-[#e8e8ed]">
+                    <div className="flex items-center gap-0.5 bg-[#f5f5f7] dark:bg-dark-bg rounded-lg p-0.5 border border-[#e8e8ed] dark:border-dark-border">
                       {([2, 3, 4] as const).map(n => (
                         <button
                           key={n}
                           onClick={() => setGridCols(n)}
                           className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                             gridCols === n
-                              ? "bg-white text-[#1d1d1f] shadow-sm"
-                              : "text-[#86868b] hover:text-[#1d1d1f]"
+                              ? "bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text shadow-sm"
+                              : "text-[#86868b] dark:text-dark-muted hover:text-[#1d1d1f] dark:hover:text-dark-text"
                           }`}
                         >
                           {n}
@@ -812,7 +846,7 @@ export default function App() {
                     <select
                       value={cityFilter}
                       onChange={(e) => setCityFilter(e.target.value)}
-                      className="rounded-full border border-[#d2d2d7] bg-white text-[#1d1d1f] px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                      className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
                     >
                       <option value="todas">Cidades (Todas)</option>
                       {cities.map(c => (
@@ -823,7 +857,7 @@ export default function App() {
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
-                      className="rounded-full border border-[#d2d2d7] bg-white text-[#1d1d1f] px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                      className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
                     >
                       <option value="todos">Imóveis (Todos)</option>
                       <option value="apartamento">Apartamento</option>
@@ -842,7 +876,7 @@ export default function App() {
                     {(() => {
                       const propertyItems = getFilteredFeedItems().filter(i => i.feedType === "property");
                       if (propertyItems.length === 0 && feedFilter === "ofertas") {
-                        return <p className="text-xs text-gray-400 text-center py-8">Nenhuma oferta encontrada.</p>;
+                        return <p className="text-xs text-gray-400 dark:text-dark-muted text-center py-8">Nenhuma oferta encontrada.</p>;
                       }
                       if (propertyItems.length === 0) return null;
                       return (
@@ -857,17 +891,17 @@ export default function App() {
                               return (
                                 <div
                                   key={item.id}
-                                  className={`group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between overflow-hidden ${
+                                  className={`group rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between overflow-hidden ${
                                     isOwn ? "ring-1 ring-blue-100" : ""
                                   }`}
                                 >
                                   {/* Feed Card Cover Image */}
                                   {item.photos && item.photos.length > 0 ? (
-                                    <div className="relative h-36 w-full bg-slate-100 overflow-hidden">
+                                    <div className="relative h-36 w-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
                                       <img src={item.photos[0]} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                                     </div>
                                   ) : (
-                                    <div className="relative h-36 w-full bg-slate-100 overflow-hidden">
+                                    <div className="relative h-36 w-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
                                       <img src={item.coverPhoto || PLACEHOLDER_IMG} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                                     </div>
                                   )}
@@ -881,16 +915,16 @@ export default function App() {
                                           {isOwn && (
                                             <span className="text-[10px] text-blue-600 bg-blue-50/50 py-0.5 px-2 rounded-md font-bold">Meu Anúncio</span>
                                           )}
-                                          <button onClick={() => handleToggleFavorite("property", item.id)} className="text-gray-400 hover:text-red-500 p-1">
+                                          <button onClick={() => handleToggleFavorite("property", item.id)} className="text-gray-400 dark:text-dark-muted hover:text-red-500 p-1">
                                             <Heart className={`h-4.5 w-4.5 ${favorites.some(f => f.favoriteType === "property" && f.targetId === item.id) ? "text-red-500 fill-red-500" : ""}`} />
                                           </button>
                                         </div>
                                       </div>
                                       <div className="space-y-1">
-                                        <h4 className="font-extrabold text-gray-900 text-sm leading-snug group-hover:text-blue-600 transition tracking-tight">{item.title}</h4>
-                                        <div className="text-[11px] text-gray-500 leading-normal line-clamp-2"><MarkdownText text={item.description} /></div>
+                                        <h4 className="font-extrabold text-gray-900 dark:text-dark-text text-sm leading-snug group-hover:text-blue-600 transition tracking-tight">{item.title}</h4>
+                                        <div className="text-[11px] text-gray-500 dark:text-dark-muted leading-normal line-clamp-2"><MarkdownText text={item.description} /></div>
                                       </div>
-                                      <div className="flex flex-wrap gap-2 text-slate-400 text-[11px] font-medium py-1">
+                                      <div className="flex flex-wrap gap-2 text-slate-400 dark:text-dark-muted text-[11px] font-medium py-1">
                                         <span>{item.neighborhood} | {item.city}</span>
                                         <span>•</span>
                                         <span>{item.bedrooms} qts</span>
@@ -899,13 +933,13 @@ export default function App() {
                                         {item.area && <><span>•</span><span>{item.area}m²</span></>}
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-between border-t border-slate-50 mt-4 pt-3 text-xs">
+                                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-dark-border mt-4 pt-3 text-xs">
                                       <div>
-                                        <span className="text-[9px] text-gray-400 font-bold uppercase block leading-none">Preço</span>
-                                        <p className="text-sm font-bold text-gray-900 mt-1">R$ {item.price.toLocaleString("pt-BR")}</p>
+                                        <span className="text-[9px] text-gray-400 dark:text-dark-muted font-bold uppercase block leading-none">Preço</span>
+                                        <p className="text-sm font-bold text-gray-900 dark:text-dark-text mt-1">R$ {item.price.toLocaleString("pt-BR")}</p>
                                       </div>
                                       <div className="flex items-center gap-1.5">
-                                        <button onClick={() => setSelectedListingDetail(item)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-gray-300 px-3 py-1 font-bold text-gray-700 bg-white hover:bg-slate-50 text-[11px]">
+                                        <button onClick={() => setSelectedListingDetail(item)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-gray-300 dark:border-dark-border px-3 py-1 font-bold text-gray-700 dark:text-dark-text bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-gray-800 text-[11px]">
                                           <Eye className="h-3.5 w-3.5" />
                                           Ver Ficha
                                         </button>
@@ -927,7 +961,7 @@ export default function App() {
                     {(() => {
                       const demandItems = getFilteredFeedItems().filter(i => i.feedType === "demand").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                       if (demandItems.length === 0 && feedFilter === "demandas") {
-                        return <p className="text-xs text-gray-400 text-center py-8">Nenhuma demanda encontrada.</p>;
+                        return <p className="text-xs text-gray-400 dark:text-dark-muted text-center py-8">Nenhuma demanda encontrada.</p>;
                       }
                       if (demandItems.length === 0) return null;
                       return (
@@ -940,22 +974,22 @@ export default function App() {
                             {demandItems.map((item) => {
                               const isOwn = item.createdBy === getActiveUserId();
                               return (
-                                <div key={item.id} className={`group rounded-2xl border border-purple-100 bg-white shadow-sm hover:shadow-md transition-all relative ${isOwn ? "ring-1 ring-purple-100" : ""}`}>
+                                <div key={item.id} className={`group rounded-2xl border border-purple-100 bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative ${isOwn ? "ring-1 ring-purple-100" : ""}`}>
                                   <div className="p-4">
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="space-y-2 flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                          <h4 className="font-extrabold text-gray-900 text-sm leading-snug tracking-tight">
+                                          <h4 className="font-extrabold text-gray-900 dark:text-dark-text text-sm leading-snug tracking-tight">
                                             Cliente busca {item.type} até R$ {item.maxPrice.toLocaleString("pt-BR")}
                                           </h4>
                                           {isOwn && (
                                             <span className="text-[10px] text-purple-600 bg-purple-50/50 py-0.5 px-2 rounded-md font-bold shrink-0">Meu Cliente</span>
                                           )}
                                         </div>
-                                        <div className="text-[11px] text-gray-500 leading-normal line-clamp-2">
+                                        <div className="text-[11px] text-gray-500 dark:text-dark-muted leading-normal line-clamp-2">
                                           {item.notes || "Observações não preenchidas."}
                                         </div>
-                                        <div className="flex flex-wrap gap-2 text-slate-400 text-[11px] font-medium">
+                                        <div className="flex flex-wrap gap-2 text-slate-400 dark:text-dark-muted text-[11px] font-medium">
                                           <span>{item.neighborhood} | {item.city}</span>
                                           <span>•</span>
                                           <span>{item.bedrooms} qts</span>
@@ -965,16 +999,16 @@ export default function App() {
                                         </div>
                                         <div className="flex items-center gap-3 text-xs pt-1">
                                           <div>
-                                            <span className="text-[9px] text-gray-400 font-bold uppercase block leading-none">Orçamento</span>
-                                            <p className="text-sm font-bold text-gray-900 mt-0.5">R$ {item.maxPrice.toLocaleString("pt-BR")}</p>
+                                            <span className="text-[9px] text-gray-400 dark:text-dark-muted font-bold uppercase block leading-none">Orçamento</span>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-dark-text mt-0.5">R$ {item.maxPrice.toLocaleString("pt-BR")}</p>
                                           </div>
-                                          <button onClick={() => setSelectedListingDetail(item)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-gray-300 px-3 py-1 font-bold text-gray-700 bg-white hover:bg-slate-50 text-[11px]">
+                                          <button onClick={() => setSelectedListingDetail(item)} className="inline-flex h-8 items-center gap-1 rounded-xl border border-gray-300 dark:border-dark-border px-3 py-1 font-bold text-gray-700 dark:text-dark-text bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-gray-800 text-[11px]">
                                             <Eye className="h-3.5 w-3.5" />
                                             Ver Ficha
                                           </button>
                                         </div>
                                       </div>
-                                      <button onClick={() => handleToggleFavorite("demand", item.id)} className="text-gray-400 hover:text-red-500 p-1 shrink-0">
+                                      <button onClick={() => handleToggleFavorite("demand", item.id)} className="text-gray-400 dark:text-dark-muted hover:text-red-500 p-1 shrink-0">
                                         <Heart className={`h-4 w-4 ${favorites.some(f => f.favoriteType === "demand" && f.targetId === item.id) ? "text-red-500 fill-red-500" : ""}`} />
                                       </button>
                                     </div>
@@ -998,8 +1032,8 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-gray-900">Meus Imóveis Captados</h2>
-                  <p className="text-sm text-gray-500">Veja e gerencie seus anúncios imobiliários publicados.</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Meus Imóveis Captados</h2>
+                  <p className="text-sm text-gray-500 dark:text-dark-muted">Veja e gerencie seus anúncios imobiliários publicados.</p>
                 </div>
                 <button
                   onClick={() => setShowPropertyForm(true)}
@@ -1011,16 +1045,16 @@ export default function App() {
               </div>
 
               {properties.filter(p => p.createdBy === getActiveUserId()).length === 0 ? (
-                <div className="text-center bg-white p-12 border border-dashed rounded-2xl">
-                  <Building2 className="h-10 w-10 text-gray-300 mx-auto" />
-                  <p className="text-xs text-gray-500 mt-3 font-medium">Você ainda não possui imóveis publicados. Cadastre sua primeira captação!</p>
+                <div className="text-center bg-white dark:bg-dark-card p-12 border border-dashed rounded-2xl">
+                  <Building2 className="h-10 w-10 text-gray-300 dark:text-gray-500 mx-auto" />
+                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-3 font-medium">Você ainda não possui imóveis publicados. Cadastre sua primeira captação!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {properties.filter(p => p.createdBy === getActiveUserId()).map((p) => (
-                    <div key={p.id} className="bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+                    <div key={p.id} className="bg-white dark:bg-dark-card border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
                       {p.photos && p.photos.length > 0 ? (
-                        <div className="relative h-44 w-full bg-slate-100">
+                        <div className="relative h-44 w-full bg-slate-100 dark:bg-gray-800">
                           <img
                             src={p.photos[0]}
                             alt={p.title}
@@ -1034,34 +1068,42 @@ export default function App() {
                         </div>
                       ) : (
                         <div className="h-44 w-full bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 text-center border-b">
-                          <Building2 className="h-7 w-7 text-slate-300" />
-                          <span className="text-[9px] text-slate-400 font-medium mt-1">Nenhuma foto anexada</span>
+                          <Building2 className="h-7 w-7 text-slate-300 dark:text-gray-500" />
+                          <span className="text-[9px] text-slate-400 dark:text-dark-muted font-medium mt-1">Nenhuma foto anexada</span>
                         </div>
                       )}
                       
                       <div className="p-4 space-y-3 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider">{p.status}</span>
-                          <span className="text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</span>
+                          <span className="text-slate-400 dark:text-dark-muted">{new Date(p.createdAt).toLocaleDateString()}</span>
                         </div>
-                        <h4 className="font-extrabold text-sm text-gray-900 leading-tight line-clamp-1">{p.title}</h4>
-                        <div className="text-gray-500 leading-relaxed line-clamp-3"><MarkdownText text={p.description} /></div>
+                        <h4 className="font-extrabold text-sm text-gray-900 dark:text-dark-text leading-tight line-clamp-1">{p.title}</h4>
+                        <div className="text-gray-500 dark:text-dark-muted leading-relaxed line-clamp-3"><MarkdownText text={p.description} /></div>
                         <div className="bg-blue-50 text-blue-800 p-2 rounded-lg font-bold">Parcerias: {p.commission}</div>
                       </div>
 
-                      <div className="bg-slate-50 border-t p-3 text-xs flex justify-between items-center">
-                        <p className="font-bold text-gray-900">R$ {p.price.toLocaleString("pt-BR")}</p>
-                        <button
-                          onClick={async () => {
-                            if (confirm("Remover este imóvel?")) {
-                              const res = await fetch(`/api/properties/${p.id}`, { method: "DELETE", headers: getHeaders() });
-                              if (res.ok) await fetchAllData();
-                            }
-                          }}
-                          className="text-red-600 hover:underline font-bold text-[11px]"
-                        >
-                          Excluir Anúncio
-                        </button>
+                      <div className="bg-slate-50 dark:bg-gray-800/50 border-t p-3 text-xs flex justify-between items-center">
+                        <p className="font-bold text-gray-900 dark:text-dark-text">R$ {p.price.toLocaleString("pt-BR")}</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => { setEditProperty(p); setShowPropertyForm(true); }}
+                            className="text-blue-600 hover:underline font-bold text-[11px]"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm("Remover este imóvel?")) {
+                                const res = await fetch(`/api/properties/${p.id}`, { method: "DELETE", headers: getHeaders() });
+                                if (res.ok) await fetchAllData();
+                              }
+                            }}
+                            className="text-red-600 hover:underline font-bold text-[11px]"
+                          >
+                            Excluir Anúncio
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1074,8 +1116,8 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-gray-900">Suas Procuras Cadastradas</h2>
-                  <p className="text-sm text-gray-500">Veja e gerencie as procuras ativas dos seus clientes cadastrados.</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Suas Procuras Cadastradas</h2>
+                  <p className="text-sm text-gray-500 dark:text-dark-muted">Veja e gerencie as procuras ativas dos seus clientes cadastrados.</p>
                 </div>
                 <button
                   onClick={() => setShowDemandForm(true)}
@@ -1087,15 +1129,15 @@ export default function App() {
               </div>
 
               {demands.filter(d => d.createdBy === getActiveUserId()).length === 0 ? (
-                <div className="text-center bg-white p-12 border border-dashed rounded-2xl">
-                  <SearchCode className="h-10 w-10 text-gray-300 mx-auto" />
-                  <p className="text-xs text-gray-500 mt-3 font-medium">Você ainda não possui procuras imobiliárias publicadas. Cadastre seu primeiro pedido!</p>
+                <div className="text-center bg-white dark:bg-dark-card p-12 border border-dashed rounded-2xl">
+                  <SearchCode className="h-10 w-10 text-gray-300 dark:text-gray-500 mx-auto" />
+                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-3 font-medium">Você ainda não possui procuras imobiliárias publicadas. Cadastre seu primeiro pedido!</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {demands.filter(d => d.createdBy === getActiveUserId()).map((d) => (
-                    <div key={d.id} className="bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
-                      <div className="relative h-36 w-full bg-slate-100 overflow-hidden">
+                    <div key={d.id} className="bg-white dark:bg-dark-card border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+                      <div className="relative h-36 w-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
                         <img src={d.coverPhoto || PLACEHOLDER_IMG} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                       </div>
                       <div className="p-4 space-y-3 text-xs flex-1">
@@ -1104,24 +1146,32 @@ export default function App() {
                           <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[9px] uppercase tracking-wider capitalize">{d.purpose} de {d.type}</span>
                           <span className="text-xs font-bold text-red-600">Urgência: {d.urgency}</span>
                         </div>
-                        <h4 className="font-extrabold text-sm text-gray-900 leading-tight">Buscar em {d.city} (Bairros: {d.neighborhoods.join(", ") || "Todos"})</h4>
-                        <p className="text-gray-500 leading-relaxed font-semibold italic">{d.notes || "Sem notas particulares"}</p>
-                        <p className="text-gray-600 mt-1">Forma de pagamento: <b>{d.paymentMethod}</b></p>
+                        <h4 className="font-extrabold text-sm text-gray-900 dark:text-dark-text leading-tight">Buscar em {d.city} (Bairros: {d.neighborhoods.join(", ") || "Todos"})</h4>
+                        <p className="text-gray-500 dark:text-dark-muted leading-relaxed font-semibold italic">{d.notes || "Sem notas particulares"}</p>
+                        <p className="text-gray-600 dark:text-dark-muted mt-1">Forma de pagamento: <b>{d.paymentMethod}</b></p>
                       </div>
 
-                      <div className="bg-slate-50 border-t p-2.5 -m-4 mt-3 flex justify-between items-center text-xs">
-                        <p className="font-bold text-gray-900">Preço teto: R$ {d.maxPrice.toLocaleString("pt-BR")}</p>
-                        <button
-                          onClick={async () => {
-                            if (confirm("Remover esta procura?")) {
-                              const res = await fetch(`/api/demands/${d.id}`, { method: "DELETE", headers: getHeaders() });
-                              if (res.ok) await fetchAllData();
-                            }
-                          }}
-                          className="text-red-600 hover:underline font-bold text-[11px]"
-                        >
-                          Excluir
-                        </button>
+                      <div className="bg-slate-50 dark:bg-gray-800/50 border-t p-2.5 -m-4 mt-3 flex justify-between items-center text-xs">
+                        <p className="font-bold text-gray-900 dark:text-dark-text">Preço teto: R$ {d.maxPrice.toLocaleString("pt-BR")}</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => { setEditDemand(d); setShowDemandForm(true); }}
+                            className="text-blue-600 hover:underline font-bold text-[11px]"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm("Remover esta procura?")) {
+                                const res = await fetch(`/api/demands/${d.id}`, { method: "DELETE", headers: getHeaders() });
+                                if (res.ok) await fetchAllData();
+                              }
+                            }}
+                            className="text-red-600 hover:underline font-bold text-[11px]"
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </div>
                       </div>
                     </div>
@@ -1142,14 +1192,14 @@ export default function App() {
           {activeTab === "favoritos" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900 font-sans">Meus Favoritos Salvos</h2>
-                <p className="text-sm text-slate-500">Acompanhe as oportunidades e corretores parceiros avaliados que você marcou com estrela.</p>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text font-sans">Meus Favoritos Salvos</h2>
+                <p className="text-sm text-slate-500 dark:text-dark-muted">Acompanhe as oportunidades e corretores parceiros avaliados que você marcou com estrela.</p>
               </div>
 
               {favorites.length === 0 ? (
-                <div className="bg-white border rounded-2xl p-12 text-center border-dashed">
-                  <Heart className="h-10 h-10 text-gray-300 mx-auto" />
-                  <p className="text-xs text-gray-500 font-medium mt-3">Você ainda não favoritou nenhuma oferta imobiliária ou parceiro.</p>
+                <div className="bg-white dark:bg-dark-card border rounded-2xl p-12 text-center border-dashed">
+                  <Heart className="h-10 h-10 text-gray-300 dark:text-gray-500 mx-auto" />
+                  <p className="text-xs text-gray-500 dark:text-dark-muted font-medium mt-3">Você ainda não favoritou nenhuma oferta imobiliária ou parceiro.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1162,9 +1212,9 @@ export default function App() {
 
                     const favPhoto = matchedProp ? matchedProp.photos?.[0] : matchedDemand?.coverPhoto;
                     return (
-                      <div key={fav.id} className="p-4 rounded-xl bg-white border flex items-center gap-4 text-xs">
+                      <div key={fav.id} className="p-4 rounded-xl bg-white dark:bg-dark-card border flex items-center gap-4 text-xs">
                         {favPhoto ? (
-                          <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                          <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-gray-800 shrink-0">
                             <img
                               src={favPhoto}
                               alt=""
@@ -1174,16 +1224,16 @@ export default function App() {
                             />
                           </div>
                         ) : (
-                          <div className="w-20 h-20 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border">
-                            <Heart className="h-5 w-5 text-slate-300" />
+                          <div className="w-20 h-20 rounded-xl bg-slate-50 dark:bg-gray-800/50 flex items-center justify-center shrink-0 border">
+                            <Heart className="h-5 w-5 text-slate-300 dark:text-gray-500" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold text-slate-400 capitalize bg-slate-50 p-1 rounded border mb-1.5 block max-w-fit">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-dark-muted capitalize bg-slate-50 dark:bg-gray-800/50 p-1 rounded border mb-1.5 block max-w-fit">
                             {matchedProp ? "Oferta" : "Demanda"}
                           </span>
-                          <h4 className="font-bold text-gray-900 text-sm truncate">{matchedProp ? matchedProp.title : `Procura de ${matchedDemand?.type}`}</h4>
-                          <p className="text-gray-500 font-medium truncate">
+                          <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm truncate">{matchedProp ? matchedProp.title : `Procura de ${matchedDemand?.type}`}</h4>
+                          <p className="text-gray-500 dark:text-dark-muted font-medium truncate">
                             {matchedProp ? matchedProp.neighborhood : matchedDemand?.neighborhoods.join(", ")} | {item.city}
                           </p>
                         </div>
@@ -1206,8 +1256,8 @@ export default function App() {
             <div className="space-y-8 max-w-3xl">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 font-sans">Meu Perfil Profissional</h2>
-                  <p className="text-slate-500 text-sm">{isEditingProfile ? "Edite seus dados e clique em salvar." : "Visualize seus dados profissionais e avaliações."}</p>
+                  <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text font-sans">Meu Perfil Profissional</h2>
+                  <p className="text-slate-500 dark:text-dark-muted text-sm">{isEditingProfile ? "Edite seus dados e clique em salvar." : "Visualize seus dados profissionais e avaliações."}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1224,7 +1274,7 @@ export default function App() {
                     }
                     setIsEditingProfile(!isEditingProfile);
                   }}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 bg-white hover:bg-slate-50 flex items-center gap-1.5"
+                  className="rounded-xl border border-gray-300 dark:border-dark-border px-4 py-2 text-xs font-bold text-gray-700 dark:text-dark-text bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-gray-800 flex items-center gap-1.5"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   {isEditingProfile ? "Cancelar" : "Editar Perfil"}
@@ -1233,12 +1283,12 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                 {/* Left Bio card */}
-                <div className="md:col-span-4 bg-white border rounded-2xl p-4 shadow-sm text-center space-y-4">
+                <div className="md:col-span-4 bg-white dark:bg-dark-card border rounded-2xl p-4 shadow-sm text-center space-y-4">
                   <div className="relative inline-block">
                     <img
                       src={isEditingProfile ? profileForm.photoUrl || activeBroker.photoUrl : activeBroker.photoUrl}
                       alt=""
-                      className="h-20 w-20 rounded-full object-cover mx-auto border-2 border-slate-100 shadow-md ring-4 ring-blue-50/50"
+                      className="h-20 w-20 rounded-full object-cover mx-auto border-2 border-slate-100 dark:border-dark-border shadow-md ring-4 ring-blue-50/50"
                       referrerPolicy="no-referrer"
                       onError={hideBrokenImg}
                     />
@@ -1274,13 +1324,13 @@ export default function App() {
                       placeholder="URL da foto de perfil"
                       value={profileForm.photoUrl}
                       onChange={(e) => setProfileForm({ ...profileForm, photoUrl: e.target.value })}
-                      className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs text-center"
+                      className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2 text-xs text-center"
                     />
                   ) : (
                     <>
                       <div>
-                        <h3 className="font-extrabold text-gray-900 text-base">{activeBroker.name}</h3>
-                        <div className="flex items-center justify-center gap-1 text-xs text-slate-500 font-semibold mt-0.5">
+                        <h3 className="font-extrabold text-gray-900 dark:text-dark-text text-base">{activeBroker.name}</h3>
+                        <div className="flex items-center justify-center gap-1 text-xs text-slate-500 dark:text-dark-muted font-semibold mt-0.5">
                           <span>{activeBroker.creci}</span>
                           {activeBroker.status === "Aprovado" && (
                             <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
@@ -1288,12 +1338,12 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-center gap-1 text-slate-600 bg-amber-50 rounded-xl py-1 px-4 max-w-fit mx-auto border border-amber-150">
+                      <div className="flex items-center justify-center gap-1 text-slate-600 dark:text-dark-muted bg-amber-50 rounded-xl py-1 px-4 max-w-fit mx-auto border border-amber-150">
                         <Star className="h-4.5 w-4.5 text-amber-500 fill-amber-500" />
                         <span className="text-xs font-bold">{activeBroker.rating || "5.0"} estrelas</span>
                       </div>
 
-                      <div className="border-t border-slate-100 pt-3 space-y-2 text-left text-xs text-gray-500 font-medium">
+                      <div className="border-t border-slate-100 dark:border-dark-border pt-3 space-y-2 text-left text-xs text-gray-500 dark:text-dark-muted font-medium">
                         <p>Atuação: <b>{activeBroker.city}</b></p>
                         <p>Taxa de Resposta: <b>{activeBroker.respondingRate}%</b></p>
                         <p>Negócios Concluídos: <b>{activeBroker.closedDeals} parcerias B2B</b></p>
@@ -1331,7 +1381,7 @@ export default function App() {
                 </div>
 
                 {/* Right Edit Form / Info */}
-                <div className="md:col-span-8 bg-white border rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="md:col-span-8 bg-white dark:bg-dark-card border rounded-2xl p-6 shadow-sm space-y-6">
                   {isEditingProfile ? (
                     <form onSubmit={async (e) => {
                       e.preventDefault();
@@ -1367,45 +1417,45 @@ export default function App() {
                       }
                     }} className="space-y-5">
                       <div>
-                        <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-2.5 mb-4">Dados Pessoais</h4>
+                        <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm border-b border-gray-100 dark:border-dark-border pb-2.5 mb-4">Dados Pessoais</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nome</label>
-                            <input type="text" required value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" />
+                            <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Nome</label>
+                            <input type="text" required value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Email</label>
-                            <input type="email" required value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" />
+                            <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Email</label>
+                            <input type="email" required value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Telefone</label>
-                            <input type="text" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" />
+                            <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Telefone</label>
+                            <input type="text" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Cidade</label>
-                            <input type="text" value={profileForm.city} onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" />
+                            <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Cidade</label>
+                            <input type="text" value={profileForm.city} onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" />
                           </div>
                         </div>
                       </div>
 
                       {activeBroker.id !== "admin-id" && (
                         <div>
-                          <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-2.5 mb-4">Alterar Senha</h4>
+                          <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm border-b border-gray-100 dark:border-dark-border pb-2.5 mb-4">Alterar Senha</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Senha Atual</label>
-                              <input type="password" value={profileForm.currentPassword} onChange={(e) => setProfileForm({ ...profileForm, currentPassword: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" placeholder="••••••••" />
+                              <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Senha Atual</label>
+                              <input type="password" value={profileForm.currentPassword} onChange={(e) => setProfileForm({ ...profileForm, currentPassword: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" placeholder="••••••••" />
                             </div>
                             <div>
-                              <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1">Nova Senha</label>
-                              <input type="password" value={profileForm.newPassword} onChange={(e) => setProfileForm({ ...profileForm, newPassword: e.target.value })} className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm" placeholder="Nova senha" />
+                              <label className="block text-[11px] font-bold text-gray-600 dark:text-dark-muted uppercase tracking-wider mb-1">Nova Senha</label>
+                              <input type="password" value={profileForm.newPassword} onChange={(e) => setProfileForm({ ...profileForm, newPassword: e.target.value })} className="w-full rounded-xl border border-gray-300 dark:border-dark-border px-3 py-2.5 text-sm" placeholder="Nova senha" />
                             </div>
                           </div>
                         </div>
                       )}
 
                       <div className="flex gap-3 pt-2 justify-end">
-                        <button type="button" onClick={() => setIsEditingProfile(false)} className="rounded-xl border border-gray-300 px-5 py-2.5 text-xs font-bold text-gray-700 bg-white hover:bg-slate-50">Cancelar</button>
+                        <button type="button" onClick={() => setIsEditingProfile(false)} className="rounded-xl border border-gray-300 dark:border-dark-border px-5 py-2.5 text-xs font-bold text-gray-700 dark:text-dark-text bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-gray-800">Cancelar</button>
                         <button type="submit" className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2.5 text-xs font-bold text-white flex items-center gap-1.5">
                           <Save className="h-3.5 w-3.5" />
                           Salvar Alterações
@@ -1415,30 +1465,30 @@ export default function App() {
                   ) : (
                     <div className="space-y-6">
                       <div>
-                        <h4 className="font-bold text-gray-900 text-sm border-b border-gray-100 pb-2.5">Esferas de Especialidade</h4>
+                        <h4 className="font-bold text-gray-900 dark:text-dark-text text-sm border-b border-gray-100 dark:border-dark-border pb-2.5">Esferas de Especialidade</h4>
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {activeBroker.specialties?.map((spec, i) => (
-                            <span key={i} className="px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-500 font-bold border">{spec}</span>
+                            <span key={i} className="px-3 py-1 bg-slate-100 dark:bg-gray-800 rounded-full text-xs text-slate-500 dark:text-dark-muted font-bold border">{spec}</span>
                           ))}
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="font-extrabold text-gray-900 text-sm border-b border-gray-100 pb-2.5">Depoimentos e Avaliações de Parceiros</h4>
+                        <h4 className="font-extrabold text-gray-900 dark:text-dark-text text-sm border-b border-gray-100 dark:border-dark-border pb-2.5">Depoimentos e Avaliações de Parceiros</h4>
                         <div className="space-y-4 mt-4">
-                          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1 text-xs">
+                          <div className="p-3.5 rounded-xl border border-slate-100 dark:border-dark-border bg-slate-50/50 space-y-1 text-xs">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-gray-800">Mariana Silva</span>
+                              <span className="font-bold text-gray-800 dark:text-dark-text">Mariana Silva</span>
                               <div className="flex items-center text-amber-500 gap-0.5"><Star className="h-3 w-3 fill-amber-500" /> 5.0</div>
                             </div>
-                            <p className="text-gray-500 italic leading-relaxed">"Fez o split de comissão imediatamente no primeiro dia útil após o fechamento do imóvel na Pituba. Agilidade surpreendente e extremo profissionalismo."</p>
+                            <p className="text-gray-500 dark:text-dark-muted italic leading-relaxed">"Fez o split de comissão imediatamente no primeiro dia útil após o fechamento do imóvel na Pituba. Agilidade surpreendente e extremo profissionalismo."</p>
                           </div>
-                          <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 space-y-1 text-xs">
+                          <div className="p-3.5 rounded-xl border border-slate-100 dark:border-dark-border bg-slate-50/50 space-y-1 text-xs">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-gray-800">Ana Costa</span>
+                              <span className="font-bold text-gray-800 dark:text-dark-text">Ana Costa</span>
                               <div className="flex items-center text-amber-500 gap-0.5"><Star className="h-3 w-3 fill-amber-500" /> 4.9</div>
                             </div>
-                            <p className="text-gray-500 italic leading-relaxed">"Corretor muito correto. Fizemos uma parceria de alto rigo no Itaim, agendou rapidamente, informou o cliente de forma precisa e foi fundamental nas tratativas."</p>
+                            <p className="text-gray-500 dark:text-dark-muted italic leading-relaxed">"Corretor muito correto. Fizemos uma parceria de alto rigo no Itaim, agendou rapidamente, informou o cliente de forma precisa e foi fundamental nas tratativas."</p>
                           </div>
                         </div>
                       </div>
@@ -1452,45 +1502,45 @@ export default function App() {
           {activeTab === "globocatalogo" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900">Catálogo Global de Imóveis</h2>
-                <p className="text-sm text-gray-500">Veja todos os imóveis cadastrados por todos os corretores da plataforma.</p>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Catálogo Global de Imóveis</h2>
+                <p className="text-sm text-gray-500 dark:text-dark-muted">Veja todos os imóveis cadastrados por todos os corretores da plataforma.</p>
               </div>
               {properties.length === 0 ? (
-                <div className="text-center bg-white p-12 border border-dashed rounded-2xl">
-                  <Building2 className="h-10 w-10 text-gray-300 mx-auto" />
-                  <p className="text-xs text-gray-500 mt-3 font-medium">Nenhum imóvel cadastrado na plataforma ainda.</p>
+                <div className="text-center bg-white dark:bg-dark-card p-12 border border-dashed rounded-2xl">
+                  <Building2 className="h-10 w-10 text-gray-300 dark:text-gray-500 mx-auto" />
+                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-3 font-medium">Nenhum imóvel cadastrado na plataforma ainda.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {properties.map((p) => (
-                    <div key={p.id} className="bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+                    <div key={p.id} className="bg-white dark:bg-dark-card border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
                       {p.photos && p.photos.length > 0 ? (
-                        <div className="relative h-44 w-full bg-slate-100">
+                        <div className="relative h-44 w-full bg-slate-100 dark:bg-gray-800">
                           <img src={p.photos[0]} alt={p.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                           <span className="absolute bottom-2 right-2 bg-black/75 text-white text-[9px] font-bold px-2 py-0.5 rounded-md font-mono">{p.photos.length} {p.photos.length === 1 ? 'Foto' : 'Fotos'}</span>
                         </div>
                       ) : (
                         <div className="h-44 w-full bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 text-center border-b">
-                          <Building2 className="h-7 w-7 text-slate-300" />
-                          <span className="text-[9px] text-slate-400 font-medium mt-1">Nenhuma foto anexada</span>
+                          <Building2 className="h-7 w-7 text-slate-300 dark:text-gray-500" />
+                          <span className="text-[9px] text-slate-400 dark:text-dark-muted font-medium mt-1">Nenhuma foto anexada</span>
                         </div>
                       )}
                       <div className="p-4 space-y-3 text-xs flex-1 flex flex-col justify-end">
                         <div className="flex items-center justify-between">
                           <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider">{p.status}</span>
-                          <span className="text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</span>
+                          <span className="text-slate-400 dark:text-dark-muted">{new Date(p.createdAt).toLocaleDateString()}</span>
                         </div>
-                        <h4 className="font-extrabold text-sm text-gray-900 leading-tight line-clamp-1">{p.title}</h4>
-                        <div className="flex flex-wrap gap-1 text-[10px] text-gray-500 font-medium">
+                        <h4 className="font-extrabold text-sm text-gray-900 dark:text-dark-text leading-tight line-clamp-1">{p.title}</h4>
+                        <div className="flex flex-wrap gap-1 text-[10px] text-gray-500 dark:text-dark-muted font-medium">
                           <span>{p.neighborhood}, {p.city}</span>
                           <span>•</span>
                           <span>{p.bedrooms} qts</span>
                           <span>•</span>
                           <span>{p.area}m²</span>
                         </div>
-                        <div className="bg-slate-50 border-t pt-2 mt-2 flex items-center justify-between">
-                          <p className="font-bold text-gray-900">R$ {p.price.toLocaleString("pt-BR")}</p>
-                          <span className="text-[10px] text-gray-400">Corretor: {simulatedBrokers.find(b => b.id === p.createdBy)?.name || p.createdBy}</span>
+                        <div className="bg-slate-50 dark:bg-gray-800/50 border-t pt-2 mt-2 flex items-center justify-between">
+                          <p className="font-bold text-gray-900 dark:text-dark-text">R$ {p.price.toLocaleString("pt-BR")}</p>
+                          <span className="text-[10px] text-gray-400 dark:text-dark-muted">Corretor: {simulatedBrokers.find(b => b.id === p.createdBy)?.name || p.createdBy}</span>
                         </div>
                       </div>
                     </div>
@@ -1518,21 +1568,21 @@ export default function App() {
       {/* MODAL: Switch broker simulation dialog */}
       {isSwitchBrokerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white border border-gray-150 p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="font-bold text-gray-900 text-base flex items-center gap-1.5">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-dark-card border border-gray-150 p-6 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
+              <h3 className="font-bold text-gray-900 dark:text-dark-text text-base flex items-center gap-1.5">
                 <RefreshCw className="h-5 w-5 text-purple-600" />
                 Alternar Broker Simulado
               </h3>
               <button
                 onClick={() => setIsSwitchBrokerOpen(false)}
-                className="p-2.5 rounded-lg border border-gray-200 text-gray-400 hover:text-black hover:bg-slate-50"
+                className="p-2.5 rounded-lg border border-gray-200 dark:border-dark-border text-gray-400 dark:text-dark-muted hover:text-black hover:bg-slate-50 dark:hover:bg-gray-800"
               >
                 <X className="h-4.5 w-4.5" />
               </button>
             </div>
 
-            <div className="text-xs text-gray-500 leading-normal space-y-3.5">
+            <div className="text-xs text-gray-500 dark:text-dark-muted leading-normal space-y-3.5">
               <p>
                 Escolha abaixo outro corretor da rede para simular interações Cruzadas!
               </p>
@@ -1542,13 +1592,13 @@ export default function App() {
                   <button
                     key={b.id}
                     onClick={() => handleSwitchBroker(b.id)}
-                    className="w-full text-left p-3 rounded-xl border border-gray-200 hover:bg-purple-50/40 hover:border-purple-200 transition-all flex items-center justify-between gap-3"
+                    className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-dark-border hover:bg-purple-50/40 hover:border-purple-200 transition-all flex items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-2.5">
                       <img src={b.photoUrl} alt="" className="h-9 w-9 rounded-full object-cover shrink-0 border" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                       <div>
-                        <p className="font-bold text-gray-900 leading-tight">{b.name} {b.isAdmin ? "(Admin)" : ""}</p>
-                        <p className="text-[10px] text-gray-400 font-semibold">{b.creci} | {b.city}</p>
+                        <p className="font-bold text-gray-900 dark:text-dark-text leading-tight">{b.name} {b.isAdmin ? "(Admin)" : ""}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-dark-muted font-semibold">{b.creci} | {b.city}</p>
                       </div>
                     </div>
                     <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-2 py-1 rounded-md border border-purple-100">Selecionar</span>
@@ -1557,8 +1607,8 @@ export default function App() {
               </div>
 
               {/* Simulation registration drawer */}
-              <div className="border-t border-gray-100 pt-4 space-y-3">
-                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Simular Novo Cadastro de Corretor autônomo</span>
+              <div className="border-t border-gray-100 dark:border-dark-border pt-4 space-y-3">
+                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted tracking-wider">Simular Novo Cadastro de Corretor autônomo</span>
                 
                 <form
                   onSubmit={(e) => {
@@ -1575,11 +1625,11 @@ export default function App() {
                   }}
                   className="space-y-2.5"
                 >
-                  <input type="text" name="name" required placeholder="Nome Completo do Corretor" className="w-full rounded-xl border border-gray-300 p-2 text-xs" />
-                  <input type="email" name="email" required placeholder="E-mail exclusivo de acesso" className="w-full rounded-xl border border-gray-300 p-2 text-xs" />
+                  <input type="text" name="name" required placeholder="Nome Completo do Corretor" className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2 text-xs" />
+                  <input type="email" name="email" required placeholder="E-mail exclusivo de acesso" className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2 text-xs" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="text" name="creci" required placeholder="Ex: CRECI 23991-F" className="w-full rounded-xl border border-gray-300 p-2 text-xs" />
-                    <select name="city" className="w-full rounded-xl border border-gray-300 p-2 text-xs">
+                    <input type="text" name="creci" required placeholder="Ex: CRECI 23991-F" className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2 text-xs" />
+                    <select name="city" className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2 text-xs">
                       <option value="Salvador">Salvador</option>
                       <option value="São Paulo">São Paulo</option>
                     </select>
@@ -1597,44 +1647,44 @@ export default function App() {
       {/* MODAL: Upload CRECI for approval (PRD Section 6.2) */}
       {showDocUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <form onSubmit={handleUploadCreciDocs} className="w-full max-w-md rounded-2xl bg-white border border-gray-150 p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="font-bold text-gray-900 text-base">Verificação Profissional de CRECI</h3>
+          <form onSubmit={handleUploadCreciDocs} className="w-full max-w-md rounded-2xl bg-white dark:bg-dark-card border border-gray-150 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-dark-border pb-3">
+              <h3 className="font-bold text-gray-900 dark:text-dark-text text-base">Verificação Profissional de CRECI</h3>
               <button
                 type="button"
                 onClick={() => setShowDocUploadModal(false)}
-                className="p-2 text-gray-400 hover:text-black rounded"
+                className="p-2 text-gray-400 dark:text-dark-muted hover:text-black rounded"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 leading-relaxed">
+            <p className="text-xs text-gray-500 dark:text-dark-muted leading-relaxed">
               Carregue os documentos solicitados. Seu CRECI passará por auditoria em minutos e você receberá o <b>Selo de Corretor Verificado</b>.
             </p>
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Upload da Cédula Física de Regularidade CRECI *</label>
+                <label className="block text-[10px] font-bold text-gray-600 dark:text-dark-muted uppercase mb-1">Upload da Cédula Física de Regularidade CRECI *</label>
                 <input
                   type="text"
                   required
                   placeholder="URL da imagem (ou simule digitando 'cadastro_creci_validado.png')"
                   value={creciDoc}
                   onChange={(e) => setCreciDoc(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 p-2.5"
+                  className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2.5"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Documento de Identificação Oficial (RG/CNH) *</label>
+                <label className="block text-[10px] font-bold text-gray-600 dark:text-dark-muted uppercase mb-1">Documento de Identificação Oficial (RG/CNH) *</label>
                 <input
                   type="text"
                   required
                   placeholder="URL da foto (ou simule digitando 'doc_identidade_frente.png')"
                   value={identDoc}
                   onChange={(e) => setIdentDoc(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 p-2.5"
+                  className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2.5"
                 />
               </div>
             </div>
@@ -1643,7 +1693,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowDocUploadModal(false)}
-                className="rounded-xl border border-gray-300 bg-white text-gray-700 font-semibold px-4 py-2.5 hover:bg-slate-50 text-xs"
+                className="rounded-xl border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card text-gray-700 dark:text-dark-text font-semibold px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs"
               >
                 Cancelar
               </button>
@@ -1662,7 +1712,7 @@ export default function App() {
       {/* MODAL: Render full details of listing with rating form trigger (PRD Section 6.14) */}
       {selectedListingDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto relative">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-dark-card border p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto relative">
             <div className="flex items-center justify-between -mt-1 -mr-1">
               <button
                 onClick={() => {
@@ -1670,7 +1720,7 @@ export default function App() {
                   setIsEditingPhotos(false);
                   setEditingPhotosList([]);
                 }}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-black px-2 py-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 dark:text-dark-muted hover:text-black px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-800 transition cursor-pointer"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
@@ -1681,7 +1731,7 @@ export default function App() {
                   setIsEditingPhotos(false);
                   setEditingPhotosList([]);
                 }}
-                className="p-2 text-gray-400 hover:text-black border rounded-lg bg-white cursor-pointer"
+                className="p-2 text-gray-400 dark:text-dark-muted hover:text-black border rounded-lg bg-white dark:bg-dark-card cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1694,27 +1744,27 @@ export default function App() {
             </span>
 
             <div className="space-y-2">
-              <h3 className="font-extrabold text-gray-900 text-lg leading-tight">
+              <h3 className="font-extrabold text-gray-900 dark:text-dark-text text-lg leading-tight">
                 {selectedListingDetail.feedType === "property" ? selectedListingDetail.title : `Procura Ativa de Comprador em ${selectedListingDetail.city}`}
               </h3>
-              <p className="text-xs text-gray-500 font-medium">{selectedListingDetail.neighborhood} | {selectedListingDetail.city}</p>
+              <p className="text-xs text-gray-500 dark:text-dark-muted font-medium">{selectedListingDetail.neighborhood} | {selectedListingDetail.city}</p>
             </div>
 
             {/* Photo carousel or cover image block */}
             {selectedListingDetail.feedType === "property" ? (
               <div className="space-y-3">
                 {isEditingPhotos ? (
-                  <div className="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="space-y-4 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-100 dark:border-dark-border">
                     <div className="flex justify-between items-center border-b pb-2">
-                      <span className="text-xs font-bold text-gray-900 uppercase font-sans">Gerenciar Imagens</span>
-                      <span className="text-xs font-semibold text-slate-500 font-mono">
+                      <span className="text-xs font-bold text-gray-900 dark:text-dark-text uppercase font-sans">Gerenciar Imagens</span>
+                      <span className="text-xs font-semibold text-slate-500 dark:text-dark-muted font-mono">
                         {editingPhotosList.length} / {maxPhotosLimit} fotos
                       </span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-2">
                       {editingPhotosList.map((photo, index) => (
-                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden border bg-white group">
+                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden border bg-white dark:bg-dark-card group">
                           <img src={photo} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                           <button
                             type="button"
@@ -1726,7 +1776,7 @@ export default function App() {
                         </div>
                       ))}
                       {editingPhotosList.length === 0 && (
-                        <div className="col-span-4 text-center py-4 bg-white rounded-lg border border-dashed text-slate-400">
+                        <div className="col-span-4 text-center py-4 bg-white dark:bg-dark-card rounded-lg border border-dashed text-slate-400 dark:text-dark-muted">
                           <p className="text-xs font-semibold">Nenhuma foto adicionada ainda.</p>
                         </div>
                       )}
@@ -1740,7 +1790,7 @@ export default function App() {
                         className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
                           isDraggingEdit
                             ? "border-blue-500 bg-blue-50/50 scale-[0.99]"
-                            : "border-gray-200 bg-white hover:bg-slate-100/50"
+                            : "border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card hover:bg-slate-100 dark:hover:bg-gray-800"
                         } cursor-pointer relative`}
                       >
                         <input
@@ -1762,7 +1812,7 @@ export default function App() {
                             </div>
                           </div>
                           <p className="text-[11px] font-bold text-blue-655">Arraste fotos ou clique para enviar</p>
-                          <p className="text-[9px] text-gray-400">Diretamente para o S3/MinIO ("imob")</p>
+                          <p className="text-[9px] text-gray-400 dark:text-dark-muted">Diretamente para o S3/MinIO ("imob")</p>
                         </div>
                       </div>
                     )}
@@ -1774,7 +1824,7 @@ export default function App() {
                           placeholder="Link da foto (https://...)"
                           value={editingNewPhotoUrl}
                           onChange={(e) => setEditingNewPhotoUrl(e.target.value)}
-                          className="flex-1 rounded-xl border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
+                          className="flex-1 rounded-xl border border-gray-300 dark:border-dark-border px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 bg-white dark:bg-dark-card"
                         />
                         <button
                           type="button"
@@ -1797,7 +1847,7 @@ export default function App() {
                           setIsEditingPhotos(false);
                           setEditingPhotosList([]);
                         }}
-                        className="flex-1 rounded-xl border border-gray-300 font-semibold py-2 text-xs text-gray-750 hover:bg-slate-100 cursor-pointer"
+                        className="flex-1 rounded-xl border border-gray-300 dark:border-dark-border font-semibold py-2 text-xs text-gray-750 hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -1814,7 +1864,7 @@ export default function App() {
                   <>
                     {selectedListingDetail.photos && selectedListingDetail.photos.length > 0 ? (
                       <div className="space-y-2">
-                        <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border">
+                        <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 dark:bg-gray-800 border">
                           <img
                             src={selectedListingDetail.photos[activePhotoIdx < selectedListingDetail.photos.length ? activePhotoIdx : 0]}
                             alt={`Foto ${activePhotoIdx + 1}`}
@@ -1850,9 +1900,9 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <div className="p-8 text-center rounded-xl bg-slate-50 border border-dashed border-gray-200 text-slate-400">
-                        <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-xs font-semibold text-gray-500">Este anúncio não possui fotos enviadas.</p>
+                      <div className="p-8 text-center rounded-xl bg-slate-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-dark-border text-slate-400 dark:text-dark-muted">
+                        <ImageIcon className="h-8 w-8 text-slate-300 dark:text-gray-500 mx-auto mb-2" />
+                        <p className="text-xs font-semibold text-gray-500 dark:text-dark-muted">Este anúncio não possui fotos enviadas.</p>
                       </div>
                     )}
 
@@ -1875,30 +1925,30 @@ export default function App() {
                 )}
               </div>
               ) : (
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border">
+                <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 dark:bg-gray-800 border">
                   <img src={selectedListingDetail.coverPhoto || PLACEHOLDER_IMG} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                 </div>
               )}
 
             {/* Main specs box */}
-            <div className="grid grid-cols-3 gap-2.5 bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs text-slate-500 text-center font-semibold">
+            <div className="grid grid-cols-3 gap-2.5 bg-slate-50 dark:bg-gray-800/50 border border-slate-100 dark:border-dark-border p-3 rounded-xl text-xs text-slate-500 dark:text-dark-muted text-center font-semibold">
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Quartos</p>
-                <p className="text-gray-800 text-sm font-bold mt-0.5">{selectedListingDetail.bedrooms} quartos</p>
+                <p className="text-[10px] text-gray-400 dark:text-dark-muted uppercase tracking-wide">Quartos</p>
+                <p className="text-gray-800 dark:text-dark-text text-sm font-bold mt-0.5">{selectedListingDetail.bedrooms} quartos</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Garagem</p>
-                <p className="text-gray-800 text-sm font-bold mt-0.5">{selectedListingDetail.parkingSpots || 0} vagas</p>
+                <p className="text-[10px] text-gray-400 dark:text-dark-muted uppercase tracking-wide">Garagem</p>
+                <p className="text-gray-800 dark:text-dark-text text-sm font-bold mt-0.5">{selectedListingDetail.parkingSpots || 0} vagas</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Área Útil</p>
-                <p className="text-gray-800 text-sm font-bold mt-0.5">{selectedListingDetail.area || selectedListingDetail.minArea} m²</p>
+                <p className="text-[10px] text-gray-400 dark:text-dark-muted uppercase tracking-wide">Área Útil</p>
+                <p className="text-gray-800 dark:text-dark-text text-sm font-bold mt-0.5">{selectedListingDetail.area || selectedListingDetail.minArea} m²</p>
               </div>
             </div>
 
               <div className="text-xs space-y-3">
-                <span className="font-bold text-gray-400 uppercase tracking-widest text-[9px] block">Descrição Oficial</span>
-                <div className="text-gray-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                <span className="font-bold text-gray-400 dark:text-dark-muted uppercase tracking-widest text-[9px] block">Descrição Oficial</span>
+                <div className="text-gray-600 dark:text-dark-muted leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100 dark:border-dark-border">
                   {selectedListingDetail.feedType === "property" ? <MarkdownText text={selectedListingDetail.description} /> : selectedListingDetail.notes}
                 </div>
 
@@ -1915,11 +1965,11 @@ export default function App() {
             </div>
 
             {/* Quick action: simulate rating the owner broker of this listing (PRD Section 6.14) */}
-            <div className="border-t border-slate-100 pt-4 flex gap-2">
+            <div className="border-t border-slate-100 dark:border-dark-border pt-4 flex gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedListingDetail(null)}
-                className="flex-1 rounded-xl border font-semibold py-2.5 text-xs text-gray-700 hover:bg-slate-50"
+                className="flex-1 rounded-xl border font-semibold py-2.5 text-xs text-gray-700 dark:text-dark-text hover:bg-slate-50 dark:hover:bg-gray-800"
               >
                 Voltar ao Feed
               </button>
@@ -1942,19 +1992,19 @@ export default function App() {
       {/* MODAL: Submit rating testimonial (PRD Section 6.14 & 6.15 Rating systems) */}
       {showAddReviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <form onSubmit={handleSubmitReview} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border space-y-4">
-            <h3 className="font-extrabold text-gray-900 text-base">Avaliar Corretor de Parceria</h3>
-            <p className="text-xs text-gray-500 leading-relaxed">
+          <form onSubmit={handleSubmitReview} className="w-full max-w-md rounded-2xl bg-white dark:bg-dark-card p-6 shadow-2xl border space-y-4">
+            <h3 className="font-extrabold text-gray-900 dark:text-dark-text text-base">Avaliar Corretor de Parceria</h3>
+            <p className="text-xs text-gray-500 dark:text-dark-muted leading-relaxed">
               Adicione uma avaliação de 1 a 5 estrelas e um testemunho sobre a facilidade e veracidade técnica desse corretor ao partilhar informações de imóveis na rede.
             </p>
 
             <div className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Nota de Parceria (Estrelas)</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-dark-muted uppercase tracking-widest mb-1">Nota de Parceria (Estrelas)</label>
                 <select
                   value={reviewScore}
                   onChange={(e) => setReviewScore(Number(e.target.value))}
-                  className="w-full rounded-xl border border-gray-300 p-2 font-bold"
+                  className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2 font-bold"
                 >
                   <option value={5}>⭐⭐⭐⭐⭐ (Excelente conduta e split honesto)</option>
                   <option value={4}>⭐⭐⭐⭐ (Muito bom profissionalismo)</option>
@@ -1965,14 +2015,14 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Depoimento Testemunhal</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-dark-muted uppercase tracking-widest mb-1">Depoimento Testemunhal</label>
                 <textarea
                   required
                   rows={3}
                   value={reviewComment}
                   placeholder="Ex: 'Renato me deu total suporte, dividiu a comissão no fechamento de forma exemplar. Super profissional'"
                   onChange={(e) => setReviewComment(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 p-2.5"
+                  className="w-full rounded-xl border border-gray-300 dark:border-dark-border p-2.5"
                 />
               </div>
             </div>
@@ -1981,7 +2031,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowAddReviewModal(null)}
-                className="rounded-xl border border-gray-300 text-gray-700 font-semibold px-4 py-2.5 hover:bg-slate-50 text-xs"
+                className="rounded-xl border border-gray-300 dark:border-dark-border text-gray-700 dark:text-dark-text font-semibold px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs"
               >
                 Voltar
               </button>
@@ -1999,7 +2049,7 @@ export default function App() {
 
       {/* Slide overlays for Form structures */}
       {showPropertyForm && (
-        <div className="fixed inset-0 z-45 bg-[#f8fafc] p-6 md:p-12 overflow-y-auto">
+        <div className="fixed inset-0 z-45 bg-[#f8fafc] dark:bg-dark-bg p-6 md:p-12 overflow-y-auto">
           <PropertyForm
             cities={cities}
             onCancel={() => setShowPropertyForm(false)}
@@ -2012,7 +2062,7 @@ export default function App() {
       )}
 
       {showDemandForm && (
-        <div className="fixed inset-0 z-45 bg-[#f8fafc] p-6 md:p-12 overflow-y-auto">
+        <div className="fixed inset-0 z-45 bg-[#f8fafc] dark:bg-dark-bg p-6 md:p-12 overflow-y-auto">
           <DemandForm
             cities={cities}
             onCancel={() => setShowDemandForm(false)}

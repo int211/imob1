@@ -90,26 +90,26 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#1d1d1f]">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#1d1d1f] dark:bg-dark-bg">
       {/* Left panel - Login / Register form */}
-      <div className="flex w-full md:w-1/2 items-center justify-center bg-[#f8fafc] p-8">
+      <div className="flex w-full md:w-1/2 items-center justify-center bg-[#f8fafc] p-8 dark:bg-dark-bg">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1d1d1f]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1d1d1f] dark:bg-dark-card">
               <Building2 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-[#1d1d1f] leading-tight">ConectaCorretor</h1>
-              <p className="text-[10px] font-semibold text-[#86868b] tracking-wide uppercase">B2B</p>
+              <h1 className="text-lg font-extrabold text-[#1d1d1f] dark:text-dark-text leading-tight">ConectaCorretor</h1>
+              <p className="text-[10px] font-semibold text-[#86868b] dark:text-dark-muted tracking-wide uppercase">B2B</p>
             </div>
           </div>
 
           {/* Tab toggle */}
-          <div className="flex mb-6 bg-[#e8e8ed] p-0.5 rounded-full w-fit">
+          <div className="flex mb-6 bg-[#e8e8ed] dark:bg-gray-800 p-0.5 rounded-full w-fit">
             <button
               onClick={() => { setMode("login"); setError(""); }}
               className={`px-5 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
-                mode === "login" ? "bg-white text-[#1d1d1f] shadow-sm" : "text-[#515154] hover:text-[#1d1d1f]"
+                mode === "login" ? "bg-white text-[#1d1d1f] shadow-sm dark:bg-dark-card dark:text-dark-text" : "text-[#515154] hover:text-[#1d1d1f] dark:text-dark-muted dark:hover:text-dark-text"
               }`}
             >
               <LogIn className="h-3.5 w-3.5 inline mr-1" />
@@ -118,7 +118,7 @@ export default function Login({ onLogin }: LoginProps) {
             <button
               onClick={() => { setMode("register"); setError(""); }}
               className={`px-5 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
-                mode === "register" ? "bg-white text-[#1d1d1f] shadow-sm" : "text-[#515154] hover:text-[#1d1d1f]"
+                mode === "register" ? "bg-white text-[#1d1d1f] shadow-sm dark:bg-dark-card dark:text-dark-text" : "text-[#515154] hover:text-[#1d1d1f] dark:text-dark-muted dark:hover:text-dark-text"
               }`}
             >
               <UserPlus className="h-3.5 w-3.5 inline mr-1" />
@@ -129,41 +129,41 @@ export default function Login({ onLogin }: LoginProps) {
           {mode === "login" ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">E-mail</label>
+                <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">E-mail</label>
                 <input
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">Senha</label>
+                <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">Senha</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     placeholder="Sua senha"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white pr-10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border pr-10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-dark-muted dark:hover:text-dark-text cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              {error && <p className="text-xs text-red-600 font-semibold bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+              {error && <p className="text-xs text-red-600 font-semibold bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-[#1d1d1f] hover:bg-black text-white font-bold py-3 text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full rounded-xl bg-[#1d1d1f] hover:bg-black dark:bg-dark-card dark:hover:bg-gray-800 text-white font-bold py-3 text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
                 {loading ? "Entrando..." : "Entrar"}
@@ -174,82 +174,82 @@ export default function Login({ onLogin }: LoginProps) {
               {regSuccess ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <CheckCircle className="h-12 w-12 text-emerald-500 mb-3" />
-                  <p className="text-sm font-bold text-emerald-700">Cadastro realizado com sucesso!</p>
-                  <p className="text-xs text-gray-500 mt-1">Redirecionando para o login...</p>
+                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Cadastro realizado com sucesso!</p>
+                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-1">Redirecionando para o login...</p>
                 </div>
               ) : (
                 <>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">Nome</label>
+                      <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">Nome</label>
                       <input
                         type="text"
                         placeholder="Seu nome"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">E-mail</label>
+                    <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">E-mail</label>
                     <input
                       type="email"
                       placeholder="seu@email.com"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                     />
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">CRECI</label>
+                      <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">CRECI</label>
                       <input
                         type="text"
                         placeholder="Ex: CRECI 00000-F"
                         value={regCreci}
                         onChange={(e) => setRegCreci(e.target.value)}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">Telefone</label>
+                      <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">Telefone</label>
                       <input
                         type="text"
                         placeholder="+55 (71) 99999-0000"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value)}
-                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">Cidade</label>
+                    <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">Cidade</label>
                     <input
                       type="text"
                       placeholder="Salvador"
                       value={regCity}
                       onChange={(e) => setRegCity(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-[#515154] uppercase tracking-wide mb-1 block">Senha</label>
+                    <label className="text-[11px] font-bold text-[#515154] dark:text-dark-muted uppercase tracking-wide mb-1 block">Senha</label>
                     <input
                       type="password"
                       placeholder="Crie uma senha"
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm bg-white dark:bg-gray-800 dark:text-dark-text dark:border-dark-border focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                     />
                   </div>
 
-                  {error && <p className="text-xs text-red-600 font-semibold bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+                  {error && <p className="text-xs text-red-600 font-semibold bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{error}</p>}
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full rounded-xl bg-[#1d1d1f] hover:bg-black text-white font-bold py-3 text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full rounded-xl bg-[#1d1d1f] hover:bg-black dark:bg-dark-card dark:hover:bg-gray-800 text-white font-bold py-3 text-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
                     {loading ? "Cadastrando..." : "Criar conta"}
