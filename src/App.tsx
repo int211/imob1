@@ -301,6 +301,15 @@ export default function App() {
         const dataNots = await resNots.json();
         setNotifications(dataNots);
       }
+
+      // 8. System settings (globalCatalogEnabled, etc)
+      const resSettings = await fetch("/api/settings");
+      if (resSettings.ok) {
+        const dataSettings = await resSettings.json();
+        if (dataSettings.globalCatalogEnabled !== undefined) {
+          setGlobalCatalogEnabled(dataSettings.globalCatalogEnabled);
+        }
+      }
     } catch (err) {
       console.error("Networking error parsing broker properties:", err);
     } finally {
