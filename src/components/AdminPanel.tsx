@@ -589,8 +589,8 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-[9px] text-gray-400 font-medium">Admin</span>
+                      <label className="flex items-center gap-2 cursor-pointer bg-white border rounded-lg px-2.5 py-1.5 hover:border-purple-300 transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <span className={`text-[10px] font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
                         <button
                           type="button"
                           onClick={async (e) => { e.stopPropagation();
@@ -604,9 +604,9 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                               onRefreshGlobalState();
                             } catch {}
                           }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
+                          className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors shadow-inner ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
                         >
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
                         </button>
                       </label>
                       <button
@@ -638,8 +638,10 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-[9px] text-gray-400 font-medium">Admin</span>
+                    <label className="flex items-center gap-2 cursor-pointer bg-white border rounded-lg px-2.5 py-1.5 hover:border-purple-300 transition-colors" onClick={(e) => e.stopPropagation()}>
+                      <span className={`text-[10px] font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>
+                        {b.isAdmin ? "Admin" : "Admin"}
+                      </span>
                       <button
                         type="button"
                         onClick={async () => {
@@ -653,9 +655,9 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                             onRefreshGlobalState();
                           } catch {}
                         }}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
+                        className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors shadow-inner ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
                       >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
                       </button>
                     </label>
                     {b.status === "Aprovado" ? (
