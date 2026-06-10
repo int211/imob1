@@ -1620,7 +1620,10 @@ export default function App() {
                         </div>
                         <div className="bg-slate-50 dark:bg-gray-800/50 border-t pt-2 mt-2 flex items-center justify-between">
                           <p className="font-bold text-gray-900 dark:text-dark-text">R$ {p.price.toLocaleString("pt-BR")}</p>
-                          <span className="text-[10px] text-gray-400 dark:text-dark-muted">Corretor: {simulatedBrokers.find(b => b.id === p.createdBy)?.name || p.createdBy}</span>
+                          <button onClick={() => setSelectedListingDetail({ ...p, feedType: "property" })} className="inline-flex h-8 items-center gap-1 rounded-xl border border-gray-300 dark:border-dark-border px-3 py-1 font-bold text-gray-700 dark:text-dark-text bg-white dark:bg-dark-card hover:bg-slate-50 dark:hover:bg-gray-800 text-[11px] cursor-pointer">
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver Ficha
+                          </button>
                         </div>
                       </div>
                     </div>
