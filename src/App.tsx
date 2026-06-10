@@ -898,7 +898,7 @@ export default function App() {
                                 <div
                                   key={item.id}
                                   className={`group rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between overflow-hidden ${
-                                    isOwn ? "ring-1 ring-blue-100" : ""
+                                    isOwn ? "ring-1 ring-blue-100 dark:ring-blue-800" : ""
                                   }`}
                                 >
                                   {/* Feed Card Cover Image */}
