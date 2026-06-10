@@ -103,14 +103,49 @@ export class OfflineDB {
       this._startKeepalive();
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7)");
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7)");
+      await this.pq("CREATE TABLE IF NOT EXISTS app_settings (id TEXT PRIMARY KEY DEFAULT 'main', data JSONB)");
       try {
         await this.syncFromMySQL();
       } catch (err: any) {
         console.error("Failed to sync from MySQL tables. Bootstrapping seeding to MySQL instead...", err.message);
         await this.seedToMySQL();
       }
+      await this.syncSettingsFromNeon();
     } else {
       this._retryConnection();
+    }
+  }
+
+  private async syncSettingsFromNeon() {
+    if (!pool) return;
+    try {
+      const { rows } = await pool.query("SELECT data FROM app_settings WHERE id = 'main'");
+      if (rows.length > 0 && rows[0].data) {
+        const settings = rows[0].data;
+        if (typeof settings === 'string') {
+          this.data.settings = JSON.parse(settings);
+        } else {
+          this.data.settings = settings;
+        }
+        this.saveLocal();
+        console.log("[settings] Loaded from Neon:", JSON.stringify(this.data.settings));
+      }
+    } catch (err: any) {
+      console.warn("[settings] Could not load from Neon:", err.message);
+    }
+  }
+
+  private async syncSettingsToNeon() {
+    if (!pool) return;
+    try {
+      const data = JSON.stringify(this.data.settings || {});
+      await pool.query(
+        "INSERT INTO app_settings (id, data) VALUES ('main', $1::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data",
+        [data]
+      );
+      console.log("[settings] Saved to Neon");
+    } catch (err: any) {
+      console.warn("[settings] Could not save to Neon:", err.message);
     }
   }
 
@@ -1233,6 +1268,8 @@ export class OfflineDB {
     if (updated.geminiApiKey) {
       process.env.LLM_API_KEY = updated.geminiApiKey;
     }
+
+    this.syncSettingsToNeon();
 
     return updated;
   }
