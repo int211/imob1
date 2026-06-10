@@ -264,6 +264,21 @@ export class OfflineDB {
         respondingRate: 85,
         closedDeals: 3,
         specialties: ["Salas Comerciais", "Terrenos em Condomínio"]
+      },
+      {
+        id: "broker-1781118286367",
+        name: "Mauricio Lopes",
+        email: "mauricio010579@gmail.com",
+        creci: "35400",
+        phone: "+55981813448",
+        whatsapp: "55981813448",
+        city: "Salvador",
+        status: "Pendente",
+        photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+        rating: 5.0,
+        respondingRate: 100,
+        closedDeals: 0,
+        specialties: ["Lançamentos residenciais", "Parcerias ágeis"]
       }
     ];
 
@@ -272,6 +287,7 @@ export class OfflineDB {
       "broker-mariana": "123456",
       "broker-ana": "123456",
       "broker-ricardo": "123456",
+      "broker-1781118286367": "123456",
     };
 
     const seedProperties: Property[] = [
