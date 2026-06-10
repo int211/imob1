@@ -1088,5 +1088,19 @@ export async function createApp() {
     }
   });
 
+  // Toggle admin status for any broker
+  app.post("/api/admin/toggle-admin", (req, res) => {
+    try {
+      const { brokerId, isAdmin } = req.body;
+      if (!brokerId || isAdmin === undefined) {
+        return res.status(400).json({ error: "brokerId and isAdmin required" });
+      }
+      const updated = db.updateBroker(brokerId, { isAdmin: Boolean(isAdmin) });
+      res.json({ success: true, broker: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return app;
 }

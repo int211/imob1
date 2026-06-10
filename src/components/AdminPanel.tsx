@@ -589,6 +589,26 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-[9px] text-gray-400 font-medium">Admin</span>
+                        <button
+                          type="button"
+                          onClick={async (e) => { e.stopPropagation();
+                            try {
+                              await fetch("/api/admin/toggle-admin", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                              });
+                              await fetchAdminData();
+                              onRefreshGlobalState();
+                            } catch {}
+                          }}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                        </button>
+                      </label>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleVerifyAction(b.id, "Aprovar"); }}
                         disabled={isActionLoading}
@@ -618,6 +638,26 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[9px] text-gray-400 font-medium">Admin</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await fetch("/api/admin/toggle-admin", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                            });
+                            await fetchAdminData();
+                            onRefreshGlobalState();
+                          } catch {}
+                        }}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
+                      </button>
+                    </label>
                     {b.status === "Aprovado" ? (
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verificado</span>
