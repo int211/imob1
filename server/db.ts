@@ -811,7 +811,7 @@ export class OfflineDB {
     this.executeMySQLWrite(
       `INSERT INTO corretores (id, name, email, creci, phone, whatsapp, city, status, photo_url, rating, responding_rate, closed_deals, is_admin, ident_doc_url, creci_doc_url)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [broker.id, broker.name, broker.email, broker.creci, broker.phone, broker.whatsapp || null, broker.city, broker.status, broker.photoUrl || null, broker.rating || 5.0, broker.respondingRate || 100, broker.closedDeals || 0, broker.isAdmin ? 1 : 0, broker.identDocUrl || null, broker.creciDocUrl || null]
+      [broker.id, broker.name, broker.email, broker.creci, broker.phone, broker.whatsapp || null, broker.city, broker.status, broker.photoUrl || null, broker.rating || 5.0, broker.respondingRate || 100, broker.closedDeals || 0, broker.isAdmin, broker.identDocUrl || null, broker.creciDocUrl || null]
     ).then(async () => {
       if (pool && broker.specialties) {
         for (const s of broker.specialties) {
@@ -835,7 +835,7 @@ export class OfflineDB {
         `UPDATE corretores 
          SET name=?, email=?, creci=?, phone=?, whatsapp=?, city=?, status=?, photo_url=?, rating=?, responding_rate=?, closed_deals=?, is_admin=?, ident_doc_url=?, creci_doc_url=?
          WHERE id=?`,
-        [bk.name, bk.email, bk.creci, bk.phone, bk.whatsapp || null, bk.city, bk.status, bk.photoUrl || null, bk.rating || 5.0, bk.respondingRate || 100, bk.closedDeals || 0, bk.isAdmin ? 1 : 0, bk.identDocUrl || null, bk.creciDocUrl || null, id]
+        [bk.name, bk.email, bk.creci, bk.phone, bk.whatsapp || null, bk.city, bk.status, bk.photoUrl || null, bk.rating || 5.0, bk.respondingRate || 100, bk.closedDeals || 0, bk.isAdmin, bk.identDocUrl || null, bk.creciDocUrl || null, id]
       ).then(async () => {
         if (pool && updates.specialties) {
           await this.executeMySQLWrite("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
