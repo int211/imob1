@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+netlify/functions/api.cjs
+netlify/functions/api.js
+netlify/functions/ping.cjs
+netlify/functions/ping.js
+
+# Local Netlify folder
+.netlify
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+data/database.json
+
+# Logs / temp
+server.err
+server.log
+deploy.zip
+metadata.json
+
+# OS
+.DS_Store
+Thumbs.db
+node_modules

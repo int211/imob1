@@ -1,0 +1,23 @@
+[build]
+  functions = "netlify/functions"
+  publish = "dist"
+
+[site]
+  id = "699be1fc-b6ae-4c97-832b-98c958378b1e"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ping"
+  to = "/.netlify/functions/ping"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
