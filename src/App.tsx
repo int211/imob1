@@ -242,6 +242,12 @@ export default function App() {
   const [gridCols, setGridCols] = useState<2 | 3 | 4>(4);
   const [cities, setCities] = useState<City[]>([]);
 
+  // Filters for global catalog
+  const [gTypeFilter, setGTypeFilter] = useState<string>("todos");
+  const [gCityFilter, setGCityFilter] = useState<string>("todas");
+  const [gPurposeFilter, setGPurposeFilter] = useState<string>("todos");
+  const [gBedroomsFilter, setGBedroomsFilter] = useState<string>("todos");
+
   // Document upload state
   const [creciDoc, setCreciDoc] = useState("");
   const [identDoc, setIdentDoc] = useState("");
@@ -1505,14 +1511,88 @@ export default function App() {
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Catálogo Global de Imóveis</h2>
                 <p className="text-sm text-gray-500 dark:text-dark-muted">Veja todos os imóveis cadastrados por todos os corretores da plataforma.</p>
               </div>
-              {properties.length === 0 ? (
-                <div className="text-center bg-white dark:bg-dark-card p-12 border border-dashed rounded-2xl">
-                  <Building2 className="h-10 w-10 text-gray-300 dark:text-gray-500 mx-auto" />
-                  <p className="text-xs text-gray-500 dark:text-dark-muted mt-3 font-medium">Nenhum imóvel cadastrado na plataforma ainda.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {properties.map((p) => (
+              {/* Global Catalog Filters */}
+              <div className="flex flex-wrap items-center gap-2 pb-2">
+                <select
+                  value={gTypeFilter}
+                  onChange={(e) => setGTypeFilter(e.target.value)}
+                  className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                >
+                  <option value="todos">Tipo (Todos)</option>
+                  <option value="apartamento">Apartamento</option>
+                  <option value="casa">Casa</option>
+                  <option value="terreno">Terreno</option>
+                  <option value="cobertura">Cobertura</option>
+                  <option value="comercial">Comercial</option>
+                </select>
+
+                <select
+                  value={gCityFilter}
+                  onChange={(e) => setGCityFilter(e.target.value)}
+                  className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                >
+                  <option value="todas">Cidade (Todas)</option>
+                  {cities.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={gPurposeFilter}
+                  onChange={(e) => setGPurposeFilter(e.target.value)}
+                  className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                >
+                  <option value="todos">Finalidade (Todas)</option>
+                  <option value="venda">Venda</option>
+                  <option value="locação">Locação</option>
+                </select>
+
+                <select
+                  value={gBedroomsFilter}
+                  onChange={(e) => setGBedroomsFilter(e.target.value)}
+                  className="rounded-full border border-[#d2d2d7] dark:border-dark-border bg-white dark:bg-dark-card text-[#1d1d1f] dark:text-dark-text px-4 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#0071e3] transition cursor-pointer"
+                >
+                  <option value="todos">Quartos (Todos)</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4+</option>
+                </select>
+
+                {(gTypeFilter !== "todos" || gCityFilter !== "todas" || gPurposeFilter !== "todos" || gBedroomsFilter !== "todos") && (
+                  <button
+                    onClick={() => { setGTypeFilter("todos"); setGCityFilter("todas"); setGPurposeFilter("todos"); setGBedroomsFilter("todos"); }}
+                    className="rounded-full px-3 py-1.5 text-xs font-bold text-[#0071e3] hover:bg-blue-50 dark:hover:bg-blue-900/30 transition cursor-pointer"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              {(() => {
+                const filtered = properties.filter(p => {
+                  if (gTypeFilter !== "todos" && p.type !== gTypeFilter) return false;
+                  if (gCityFilter !== "todas" && p.city.toLowerCase() !== gCityFilter.toLowerCase()) return false;
+                  if (gPurposeFilter !== "todos" && p.purpose !== gPurposeFilter) return false;
+                  if (gBedroomsFilter !== "todos") {
+                    if (gBedroomsFilter === "4" && p.bedrooms < 4) return false;
+                    if (gBedroomsFilter !== "4" && p.bedrooms !== Number(gBedroomsFilter)) return false;
+                  }
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center bg-white dark:bg-dark-card p-12 border border-dashed rounded-2xl">
+                      <Building2 className="h-10 w-10 text-gray-300 dark:text-gray-500 mx-auto" />
+                      <p className="text-xs text-gray-500 dark:text-dark-muted mt-3 font-medium">Nenhum imóvel encontrado com esses filtros.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filtered.map((p) => (
                     <div key={p.id} className="bg-white dark:bg-dark-card border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
                       {p.photos && p.photos.length > 0 ? (
                         <div className="relative h-44 w-full bg-slate-100 dark:bg-gray-800">
@@ -1546,7 +1626,8 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-              )}
+              );
+            })()}
             </div>
           )}
 
