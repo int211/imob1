@@ -35,15 +35,19 @@ export const dbStatus = {
 
 // Initialize background connection
 async function initMySQL() {
-  const connectionString = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_OHx0M9ybkGoI@ep-misty-dew-ac6fww4f-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
+  const NEON_URL = "postgresql://neondb_owner:npg_OHx0M9ybkGoI@ep-misty-dew-ac6fww4f.sa-east-1.aws.neon.tech/neondb?sslmode=require";
+const connectionString = process.env.DATABASE_URL || NEON_URL;
+if (connectionString !== NEON_URL) {
+  console.warn("[neon] Using DATABASE_URL from env (different from hardcoded). If connection fails, check the env var value.");
+}
 
   console.log(`Connecting to Neon PostgreSQL...`);
   try {
     const newPool = new Pool({
       connectionString,
       max: 10,
-      idleTimeoutMillis: 10000,
-      connectionTimeoutMillis: 5000
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000
     });
 
     const client = await newPool.connect();
@@ -96,6 +100,7 @@ export class OfflineDB {
   private async bootstrapMySQL() {
     const connected = await initMySQL();
     if (connected && pool) {
+      this._startKeepalive();
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7)");
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7)");
       try {
@@ -104,7 +109,36 @@ export class OfflineDB {
         console.error("Failed to sync from MySQL tables. Bootstrapping seeding to MySQL instead...", err.message);
         await this.seedToMySQL();
       }
+    } else {
+      this._retryConnection();
     }
+  }
+
+  private async _retryConnection() {
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      await new Promise(r => setTimeout(r, 15000));
+      console.log(`[reconnect] Attempt ${attempt}/10...`);
+      const ok = await initMySQL();
+      if (ok && pool) {
+        console.log("[reconnect] Connected to Neon on retry!");
+        this._startKeepalive();
+        try {
+          await this.syncFromMySQL();
+        } catch (err: any) {
+          console.error("[reconnect] Sync failed on retry:", err.message);
+          await this.seedToMySQL();
+        }
+        break;
+      }
+    }
+  }
+
+  private _startKeepalive() {
+    setInterval(() => {
+      if (pool) {
+        pool.query("SELECT 1").catch(() => {});
+      }
+    }, 240000);
   }
 
   // Load from offline state
@@ -1157,7 +1191,8 @@ export class OfflineDB {
         s3SecretKey: "vLhG23YaHZ0QNCPjyVIeQwXhbqX5TELRJ0xJYqw1",
         s3BucketName: "imob",
         apiKey: "",
-        proximityRadius: 10
+        proximityRadius: 10,
+        globalCatalogEnabled: false
       };
     } else {
       // Backfill S3 credentials if missing in existing settings
@@ -1187,7 +1222,11 @@ export class OfflineDB {
 
   public updateSettings(updates: Partial<SystemSettings>): SystemSettings {
     const current = this.getSettings();
-    const updated = { ...current, ...updates };
+    const filtered: Record<string, any> = {};
+    for (const [key, val] of Object.entries(updates)) {
+      if (val !== undefined) filtered[key] = val;
+    }
+    const updated = { ...current, ...filtered } as SystemSettings;
     this.data.settings = updated;
     this.saveLocal();
 

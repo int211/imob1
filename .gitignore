@@ -11,6 +11,9 @@ netlify/functions/ping.js
 # Local Netlify folder
 .netlify
 
+# Local Vercel folder
+.vercel
+
 # Environment
 .env
 .env.local
@@ -29,3 +32,5 @@ metadata.json
 .DS_Store
 Thumbs.db
 node_modules
+
+.vercel

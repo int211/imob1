@@ -817,7 +817,7 @@ export async function createApp() {
 
   app.post("/api/admin/settings", (req, res) => {
     try {
-      const { geminiApiKey, llmModelName, llmEndpointUrl, maxPhotosPerProperty, s3Url, s3AccessKey, s3SecretKey, s3BucketName, apiKey, proximityRadius } = req.body;
+      const { geminiApiKey, llmModelName, llmEndpointUrl, maxPhotosPerProperty, s3Url, s3AccessKey, s3SecretKey, s3BucketName, apiKey, proximityRadius, globalCatalogEnabled } = req.body;
       const updated = db.updateSettings({
         geminiApiKey,
         llmModelName,
@@ -828,7 +828,8 @@ export async function createApp() {
         s3SecretKey,
         s3BucketName,
         apiKey,
-        proximityRadius: proximityRadius ? Number(proximityRadius) : 10
+        proximityRadius: proximityRadius ? Number(proximityRadius) : 10,
+        globalCatalogEnabled: globalCatalogEnabled !== undefined ? Boolean(globalCatalogEnabled) : undefined
       });
       res.json(updated);
     } catch (err: any) {
@@ -977,7 +978,7 @@ export async function createApp() {
   app.get("/api/settings", (req, res) => {
     try {
       const s = db.getSettings();
-      res.json({ maxPhotosPerProperty: s.maxPhotosPerProperty, proximityRadius: s.proximityRadius || 10 });
+      res.json({ maxPhotosPerProperty: s.maxPhotosPerProperty, proximityRadius: s.proximityRadius || 10, globalCatalogEnabled: !!s.globalCatalogEnabled });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

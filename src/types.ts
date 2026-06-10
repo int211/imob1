@@ -160,4 +160,5 @@ export interface SystemSettings {
   s3BucketName?: string;
   apiKey?: string;
   proximityRadius?: number;
+  globalCatalogEnabled?: boolean;
 }

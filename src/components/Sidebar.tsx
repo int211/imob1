@@ -1,7 +1,7 @@
-import { Home, Building2, SearchCode, Compass, Heart, ShieldAlert, User, CheckCircle, Clock, LogOut } from "lucide-react";
+import { Home, Building2, SearchCode, Compass, Heart, ShieldAlert, User, CheckCircle, Clock, LogOut, Globe } from "lucide-react";
 import { Corretor } from "../types";
 
-type ActiveTab = "inicio" | "imoveis" | "procuras" | "matches" | "favoritos" | "perfil" | "admin";
+type ActiveTab = "inicio" | "imoveis" | "procuras" | "matches" | "favoritos" | "perfil" | "admin" | "globocatalogo";
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -12,9 +12,10 @@ interface SidebarProps {
   onLogout: () => void;
   isOpen: boolean;
   onClose: () => void;
+  globalCatalogEnabled?: boolean;
 }
 
-export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotificationsCount, matchesCount, onLogout, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotificationsCount, matchesCount, onLogout, isOpen, onClose, globalCatalogEnabled }: SidebarProps) {
   const menuItems = [
     { id: "inicio", label: "Início", icon: Home },
     { id: "imoveis", label: "Meus Imóveis", icon: Building2 },
@@ -23,6 +24,10 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
     { id: "favoritos", label: "Favoritos", icon: Heart },
     { id: "perfil", label: "Meu Perfil & CRECI", icon: User },
   ];
+
+  if (globalCatalogEnabled) {
+    menuItems.push({ id: "globocatalogo", label: "Catálogo Global", icon: Globe });
+  }
 
   return (
     <>

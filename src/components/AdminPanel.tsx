@@ -91,7 +91,8 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
     geminiApiKey: "",
     llmModelName: "openai/gpt-4o-mini",
     llmEndpointUrl: "https://openrouter.ai/api/v1/chat/completions",
-    maxPhotosPerProperty: 5
+    maxPhotosPerProperty: 5,
+    globalCatalogEnabled: false
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
@@ -1102,6 +1103,21 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
 
                 <div className="space-y-3 text-xs">
                   <div className="space-y-1">
+                    <label className="block font-bold text-gray-700">Catálogo Global</label>
+                    <div className="flex items-center gap-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, globalCatalogEnabled: !settings.globalCatalogEnabled })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.globalCatalogEnabled ? "bg-purple-600" : "bg-gray-300"}`}
+                      >
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${settings.globalCatalogEnabled ? "translate-x-[22px]" : "translate-x-[2px]"}`} />
+                      </button>
+                      <span className="text-sm font-semibold text-gray-700">{settings.globalCatalogEnabled ? "Ativado" : "Desativado"}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 block mt-1">Quando ativo, exibe o menu "Catálogo Global" para todos os corretores verem todas as postagens da plataforma.</span>
+                  </div>
+
+                  <div className="space-y-1 pt-3">
                     <label className="block font-bold text-gray-700">Limite Máximo de Fotos por Imóvel</label>
                     <div className="flex items-center gap-3">
                       <input

@@ -18,7 +18,7 @@ import AdminPanel from "./components/AdminPanel";
 import Login from "./components/Login";
 import { Corretor, Property, Demand, Match, Favorite, Notification, UrgencyType, City } from "./types";
 
-type ActiveTab = "inicio" | "imoveis" | "procuras" | "matches" | "favoritos" | "perfil" | "admin";
+type ActiveTab = "inicio" | "imoveis" | "procuras" | "matches" | "favoritos" | "perfil" | "admin" | "globocatalogo";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("inicio");
@@ -60,6 +60,7 @@ export default function App() {
   const [isUploadingEdit, setIsUploadingEdit] = useState(false);
   const [isDraggingEdit, setIsDraggingEdit] = useState(false);
   const [maxPhotosLimit, setMaxPhotosLimit] = useState(8);
+  const [globalCatalogEnabled, setGlobalCatalogEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -67,6 +68,9 @@ export default function App() {
       .then(data => {
         if (data && data.maxPhotosPerProperty) {
           setMaxPhotosLimit(data.maxPhotosPerProperty);
+        }
+        if (data && data.globalCatalogEnabled !== undefined) {
+          setGlobalCatalogEnabled(data.globalCatalogEnabled);
         }
       })
       .catch(() => {});
@@ -556,6 +560,7 @@ export default function App() {
         onLogout={handleLogout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        globalCatalogEnabled={globalCatalogEnabled}
       />
 
       {/* Main Panel Frame */}
@@ -1432,6 +1437,57 @@ export default function App() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "globocatalogo" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900">Catálogo Global de Imóveis</h2>
+                <p className="text-sm text-gray-500">Veja todos os imóveis cadastrados por todos os corretores da plataforma.</p>
+              </div>
+              {properties.length === 0 ? (
+                <div className="text-center bg-white p-12 border border-dashed rounded-2xl">
+                  <Building2 className="h-10 w-10 text-gray-300 mx-auto" />
+                  <p className="text-xs text-gray-500 mt-3 font-medium">Nenhum imóvel cadastrado na plataforma ainda.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {properties.map((p) => (
+                    <div key={p.id} className="bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between">
+                      {p.photos && p.photos.length > 0 ? (
+                        <div className="relative h-44 w-full bg-slate-100">
+                          <img src={p.photos[0]} alt={p.title} className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
+                          <span className="absolute bottom-2 right-2 bg-black/75 text-white text-[9px] font-bold px-2 py-0.5 rounded-md font-mono">{p.photos.length} {p.photos.length === 1 ? 'Foto' : 'Fotos'}</span>
+                        </div>
+                      ) : (
+                        <div className="h-44 w-full bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-4 text-center border-b">
+                          <Building2 className="h-7 w-7 text-slate-300" />
+                          <span className="text-[9px] text-slate-400 font-medium mt-1">Nenhuma foto anexada</span>
+                        </div>
+                      )}
+                      <div className="p-4 space-y-3 text-xs flex-1 flex flex-col justify-end">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider">{p.status}</span>
+                          <span className="text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <h4 className="font-extrabold text-sm text-gray-900 leading-tight line-clamp-1">{p.title}</h4>
+                        <div className="flex flex-wrap gap-1 text-[10px] text-gray-500 font-medium">
+                          <span>{p.neighborhood}, {p.city}</span>
+                          <span>•</span>
+                          <span>{p.bedrooms} qts</span>
+                          <span>•</span>
+                          <span>{p.area}m²</span>
+                        </div>
+                        <div className="bg-slate-50 border-t pt-2 mt-2 flex items-center justify-between">
+                          <p className="font-bold text-gray-900">R$ {p.price.toLocaleString("pt-BR")}</p>
+                          <span className="text-[10px] text-gray-400">Corretor: {simulatedBrokers.find(b => b.id === p.createdBy)?.name || p.createdBy}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
