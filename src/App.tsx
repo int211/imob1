@@ -1853,7 +1853,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setEditingPhotosList(prev => prev.filter((_, i) => i !== index))}
-                            className="absolute top-1 right-1 p-0.5 bg-red-650 hover:bg-red-700 text-white rounded-md cursor-pointer max-w-min"
+                            className="absolute top-1 right-1 p-0.5 bg-red-650 hover:bg-red-700 dark:bg-red-800/80 dark:hover:bg-red-900/80 text-white rounded-md cursor-pointer max-w-min"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -1873,7 +1873,7 @@ export default function App() {
                         onDrop={handleDropEdit}
                         className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
                           isDraggingEdit
-                            ? "border-blue-500 bg-blue-50/50 scale-[0.99]"
+                            ? "border-blue-500 bg-blue-50/50 dark:border-blue-400 dark:bg-blue-900/30 scale-[0.99]"
                             : "border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card hover:bg-slate-100 dark:hover:bg-gray-800"
                         } cursor-pointer relative`}
                       >
@@ -1887,7 +1887,7 @@ export default function App() {
                         />
                         <div className="pointer-events-none">
                           <div className="flex justify-center mb-1">
-                            <div className={`p-2 rounded-full bg-blue-50 text-blue-650 ${isUploadingEdit ? "animate-pulse" : ""}`}>
+                            <div className={`p-2 rounded-full bg-blue-50 text-blue-650 dark:bg-blue-900/40 dark:text-blue-300 ${isUploadingEdit ? "animate-pulse" : ""}`}>
                               {isUploadingEdit ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                               ) : (
@@ -1895,7 +1895,7 @@ export default function App() {
                               )}
                             </div>
                           </div>
-                          <p className="text-[11px] font-bold text-blue-655">Arraste fotos ou clique para enviar</p>
+                          <p className="text-[11px] font-bold text-blue-655 dark:text-blue-300">Arraste fotos ou clique para enviar</p>
                           <p className="text-[9px] text-gray-400 dark:text-dark-muted">Diretamente para o S3/MinIO ("imob")</p>
                         </div>
                       </div>
@@ -1924,14 +1924,14 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-2 border-t border-gray-150">
+                    <div className="flex gap-2 pt-2 border-t border-gray-150 dark:border-dark-border">
                       <button
                         type="button"
                         onClick={() => {
                           setIsEditingPhotos(false);
                           setEditingPhotosList([]);
                         }}
-                        className="flex-1 rounded-xl border border-gray-300 dark:border-dark-border font-semibold py-2 text-xs text-gray-750 hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
+                        className="flex-1 rounded-xl border border-gray-300 dark:border-dark-border font-semibold py-2 text-xs text-gray-750 dark:text-dark-text hover:bg-slate-100 dark:hover:bg-gray-800 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -1998,7 +1998,7 @@ export default function App() {
                             setEditingPhotosList(selectedListingDetail.photos || []);
                             setIsEditingPhotos(true);
                           }}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-650 hover:text-blue-750 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-650 hover:text-blue-750 dark:text-blue-300 dark:hover:text-blue-200 dark:bg-blue-900/40 dark:border-blue-700/50 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition cursor-pointer"
                         >
                           <ImageIcon className="h-3.5 w-3.5" />
                           Gerenciar Fotos (S3/MinIO)
