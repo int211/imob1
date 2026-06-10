@@ -589,26 +589,23 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <label className="flex items-center gap-2 cursor-pointer bg-white border rounded-lg px-2.5 py-1.5 hover:border-purple-300 transition-colors" onClick={(e) => e.stopPropagation()}>
-                        <span className={`text-[10px] font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
-                        <button
-                          type="button"
-                          onClick={async (e) => { e.stopPropagation();
-                            try {
-                              await fetch("/api/admin/toggle-admin", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
-                              });
-                              await fetchAdminData();
-                              onRefreshGlobalState();
-                            } catch {}
-                          }}
-                          className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors shadow-inner ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
-                        >
-                          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-                        </button>
-                      </label>
+                      <button
+                        type="button"
+                        onClick={async (e) => { e.stopPropagation();
+                          try {
+                            await fetch("/api/admin/toggle-admin", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                            });
+                            await fetchAdminData();
+                            onRefreshGlobalState();
+                          } catch {}
+                        }}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${b.isAdmin ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-gray-100 text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600"}`}
+                      >
+                        {b.isAdmin ? "Admin ✓" : "Admin"}
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleVerifyAction(b.id, "Aprovar"); }}
                         disabled={isActionLoading}
@@ -638,28 +635,23 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <label className="flex items-center gap-2 cursor-pointer bg-white border rounded-lg px-2.5 py-1.5 hover:border-purple-300 transition-colors" onClick={(e) => e.stopPropagation()}>
-                      <span className={`text-[10px] font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>
-                        {b.isAdmin ? "Admin" : "Admin"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await fetch("/api/admin/toggle-admin", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
-                            });
-                            await fetchAdminData();
-                            onRefreshGlobalState();
-                          } catch {}
-                        }}
-                        className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors shadow-inner ${b.isAdmin ? "bg-purple-600" : "bg-gray-300"}`}
-                      >
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${b.isAdmin ? "translate-x-[18px]" : "translate-x-[2px]"}`} />
-                      </button>
-                    </label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await fetch("/api/admin/toggle-admin", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
+                          });
+                          await fetchAdminData();
+                          onRefreshGlobalState();
+                        } catch {}
+                      }}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition cursor-pointer ${b.isAdmin ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-gray-100 text-gray-500 border-gray-200 hover:border-purple-300 hover:text-purple-600"}`}
+                    >
+                      {b.isAdmin ? "Admin ✓" : "Admin"}
+                    </button>
                     {b.status === "Aprovado" ? (
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verificado</span>
