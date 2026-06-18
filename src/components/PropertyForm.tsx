@@ -243,9 +243,8 @@ export default function PropertyForm({ onSuccess, onCancel, cities, editProperty
       const method = editProperty ? "PUT" : "POST";
       const response = await fetch(url, {
         method,
-        headers: { 
-          "Content-Type": "application/json",
-          "x-user-id": localStorage.getItem("conectacorretor_user_id") || "admin-id"
+        headers: {
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           title,

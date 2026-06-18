@@ -1,9 +1,11 @@
 import express from "express";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { interpretDemand, getMatchInsights, optimizeListing, testConnection, listModels } from "./openrouter.js";
 import { calculateAllNetworkMatches, triggerMatchCalculationForProperty, triggerMatchCalculationForDemand } from "./matcher.js";
 import { Corretor, Property, Demand, Match, Notification, Rating, Favorite } from "../src/types.js";
+import { authMiddleware, adminMiddleware, setAuthCookie, clearAuthCookie, AuthPayload } from "./auth.js";
 
 dotenv.config();
 
@@ -13,10 +15,22 @@ export async function createApp() {
   await db.waitForInit();
   const app = express();
 
+  app.use(cookieParser());
+
+  const allowedOrigins = process.env.CORS_ORIGIN || "";
   app.use((_req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const origin = _req.headers.origin || "";
+    if (allowedOrigins) {
+      const allowed = allowedOrigins.split(",").map(o => o.trim());
+      if (allowed.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+      }
+    } else if (process.env.NODE_ENV !== "production") {
+      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    }
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-user-id");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     if (_req.method === "OPTIONS") {
       res.sendStatus(204);
       return;
@@ -29,56 +43,53 @@ export async function createApp() {
     next();
   });
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-  const getContextUser = (req: express.Request): Corretor => {
-    const userId = req.headers["x-user-id"] as string || "broker-renato";
-    const user = db.getBroker(userId);
-    if (user) return user;
-
-    return db.getBrokers()[0] || {
-      id: "broker-renato",
-      name: "Renato Albuquerque",
-      email: "renato@corretor.com.br",
-      creci: "CRECI 12450-F",
-      phone: "+5571999991111",
-      city: "Salvador",
-      status: "Aprovado",
-      isAdmin: true
-    };
+  const getContextUser = (req: express.Request): Corretor | null => {
+    const auth = (req as any).auth as AuthPayload | undefined;
+    if (!auth) return null;
+    return db.getBroker(auth.brokerId) || null;
   };
 
-  // ==================== AUTHENTICATION & PROFILES ====================
+  // ==================== PUBLIC AUTH ENDPOINTS (no middleware) ====================
 
-  app.get("/api/auth/me", (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     try {
-      const user = getContextUser(req);
-      res.json(user);
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
+      }
+
+      const broker = db.getBrokerByEmail(email);
+      if (!broker) {
+        return res.status(401).json({ error: "E-mail não encontrado." });
+      }
+
+      const valid = await db.validatePassword(broker.id, password);
+      if (!valid) {
+        return res.status(401).json({ error: "Senha incorreta." });
+      }
+
+      setAuthCookie(res, { brokerId: broker.id, isAdmin: !!broker.isAdmin });
+      console.log("[login] success:", broker.id);
+      res.json(broker);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.post("/api/auth/make-admin", (req, res) => {
-    try {
-      const user = getContextUser(req);
-      const updated = db.updateBroker(user.id, { isAdmin: true, status: "Aprovado" });
-      res.json(updated);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.post("/api/auth/register", (req, res) => {
+  app.post("/api/auth/register", async (req, res) => {
     try {
       const { name, email, creci, phone, city, password } = req.body;
       if (!name || !email || !creci) {
         return res.status(400).json({ error: "Nome, E-mail e número do CRECI são obrigatórios." });
       }
 
-      const exist = db.getBrokers().find(b => b.email.toLowerCase() === email.toLowerCase() || b.creci === creci);
+      const brokers = await db.fetchBrokersFromMySQL();
+      const exist = brokers.find(b => b.email.toLowerCase() === email.toLowerCase() || b.creci === creci);
       if (exist) {
+        setAuthCookie(res, { brokerId: exist.id, isAdmin: !!exist.isAdmin });
         return res.status(200).json(exist);
       }
 
@@ -96,61 +107,150 @@ export async function createApp() {
         rating: 5.0,
         respondingRate: 100,
         closedDeals: 0,
+        isAdmin: false,
         specialties: ["Lançamentos residenciais", "Parcerias ágeis"]
       };
 
-      db.createBroker(newBroker);
+      await db.createBroker(newBroker);
+      await db.setPassword(id, password || "123456");
 
-      if (password) {
-        db.setPassword(id, password);
-      } else {
-        db.setPassword(id, "123456");
-      }
-
+      setAuthCookie(res, { brokerId: id, isAdmin: false });
       res.status(201).json(newBroker);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/logout", (_req, res) => {
+    clearAuthCookie(res);
+    res.json({ success: true });
+  });
+
+  // Public settings (no auth needed for frontend bootstrap)
+  app.get("/api/settings", (_req, res) => {
     try {
-      const { email, password } = req.body;
-      console.log("[login] attempt:", { email, password: !!password });
-      if (!email || !password) {
-        console.log("[login] missing fields");
-        return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
-      }
-
-      const broker = db.getBrokerByEmail(email);
-      if (!broker) {
-        console.log("[login] email not found:", email);
-        return res.status(401).json({ error: "E-mail não encontrado." });
-      }
-
-      if (!db.validatePassword(broker.id, password)) {
-        console.log("[login] wrong password for:", email);
-        return res.status(401).json({ error: "Senha incorreta." });
-      }
-
-      console.log("[login] success:", email);
-      res.json(broker);
+      const s = db.getSettings();
+      res.json({ maxPhotosPerProperty: s.maxPhotosPerProperty, proximityRadius: s.proximityRadius || 10, globalCatalogEnabled: !!s.globalCatalogEnabled });
     } catch (err: any) {
-      console.log("[login] error:", err.message, err.stack);
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.post("/api/auth/verify-docs", (req, res) => {
+  app.get("/api/cities", (_req, res) => {
+    try {
+      res.json(db.getCities());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // S3 file proxy (public, images are not secret)
+  app.get("/api/files/:bucket/*", async (req, res) => {
+    const bucket = req.params.bucket;
+    const key = (req.params as any)[0];
+    if (!bucket || !key) {
+      return res.status(400).json({ error: "Missing bucket or key" });
+    }
+    try {
+      const settings = db.getSettings();
+      if (!settings.s3AccessKey || !settings.s3SecretKey) {
+        return res.status(500).json({ error: "S3 credentials not configured" });
+      }
+      const s3Client = new S3Client({
+        endpoint: settings.s3Url || "",
+        region: "us-east-1",
+        credentials: {
+          accessKeyId: settings.s3AccessKey,
+          secretAccessKey: settings.s3SecretKey,
+        },
+        forcePathStyle: true,
+      });
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+      const response = await s3Client.send(command);
+      const contentType = response.ContentType || "image/jpeg";
+      res.set("Content-Type", contentType);
+      res.set("Cache-Control", "public, max-age=31536000");
+      if (response.Body) {
+        const body = response.Body as any;
+        const chunks: Buffer[] = [];
+        for await (const chunk of body) {
+          chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+        }
+        res.send(Buffer.concat(chunks));
+      }
+    } catch (err: any) {
+      res.status(404).json({ error: "File not found" });
+    }
+  });
+
+  // ==================== EXTERNAL DEMAND IMPORT (API Key auth, no JWT) ====================
+
+  app.post("/api/demands/import", async (req, res) => {
+    try {
+      const apiKey = req.headers["x-api-key"] as string;
+      const settings = db.getSettings();
+      if (!settings.apiKey || apiKey !== settings.apiKey) {
+        return res.status(401).json({ error: "API key inválida ou não configurada." });
+      }
+
+      const { type, purpose, city, neighborhoods, maxPrice, bedrooms, parkingSpots, minArea, urgency, paymentMethod, notes, name, phone, email } = req.body;
+
+      if (!maxPrice || !paymentMethod) {
+        return res.status(400).json({ error: "maxPrice e paymentMethod são obrigatórios." });
+      }
+
+      const id = `dem-ext-${Date.now()}`;
+      const newDemand: Demand = {
+        id,
+        type: type || "apartamento",
+        purpose: purpose || "venda",
+        city: city || "Salvador",
+        neighborhoods: neighborhoods || [],
+        maxPrice,
+        bedrooms: bedrooms || 0,
+        parkingSpots: parkingSpots || 0,
+        minArea: minArea || 0,
+        urgency: urgency || "média",
+        paymentMethod,
+        notes: notes ? `${notes}${name ? `\nNome: ${name}` : ""}${phone ? `\nTel: ${phone}` : ""}${email ? `\nEmail: ${email}` : ""}` : `Importado via API externa${name ? `\nNome: ${name}` : ""}${phone ? `\nTel: ${phone}` : ""}${email ? `\nEmail: ${email}` : ""}`,
+        status: "Ativo",
+        createdAt: new Date().toISOString(),
+        createdBy: "api-import"
+      };
+
+      await db.createDemand(newDemand);
+      triggerMatchCalculationForDemand(newDemand);
+
+      res.status(201).json({ success: true, demandId: id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ==================== AUTH MIDDLEWARE — all routes below require login ====================
+  app.use("/api", authMiddleware);
+
+  app.get("/api/auth/me", (req, res) => {
+    try {
+      const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Usuário não encontrado." });
+      res.json(user);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/auth/verify-docs", async (req, res) => {
     try {
       const { creciDoc, identDoc } = req.body;
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
 
       if (!creciDoc || !identDoc) {
         return res.status(400).json({ error: "Documento de Identidade e do CRECI são fundamentais para validação." });
       }
-
-      db.updateBroker(user.id, {
+      
+      await db.updateBroker(user.id, {
         status: "Pendente",
         identDocUrl: identDoc,
         creciDocUrl: creciDoc
@@ -205,9 +305,10 @@ export async function createApp() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  app.post("/api/properties", (req, res) => {
+  app.post("/api/properties", async (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
 
       if (user.status !== "Aprovado") {
         return res.status(403).json({
@@ -278,7 +379,7 @@ export async function createApp() {
         longitude: longitude || undefined
       };
 
-      db.createProperty(newProperty);
+      await db.createProperty(newProperty);
       triggerMatchCalculationForProperty(newProperty);
 
       res.status(201).json(newProperty);
@@ -290,6 +391,7 @@ export async function createApp() {
   app.delete("/api/properties/:id", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const propId = req.params.id;
       const prop = db.getProperty(propId);
 
@@ -311,6 +413,7 @@ export async function createApp() {
   app.put("/api/properties/:id", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const propId = req.params.id;
       const prop = db.getProperty(propId);
 
@@ -375,6 +478,7 @@ export async function createApp() {
   app.post("/api/demands", async (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
 
       if (user.status !== "Aprovado") {
         return res.status(403).json({
@@ -421,7 +525,7 @@ export async function createApp() {
         createdBy: user.id
       };
 
-      db.createDemand(newDemand);
+      await db.createDemand(newDemand);
       triggerMatchCalculationForDemand(newDemand);
 
       res.status(201).json(newDemand);
@@ -433,6 +537,7 @@ export async function createApp() {
   app.delete("/api/demands/:id", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const demandId = req.params.id;
       const dem = db.getDemand(demandId);
 
@@ -454,6 +559,7 @@ export async function createApp() {
   app.put("/api/demands/:id", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const demId = req.params.id;
       const dem = db.getDemand(demId);
 
@@ -482,55 +588,13 @@ export async function createApp() {
     }
   });
 
-  // ==================== EXTERNAL DEMAND IMPORT (API Key) ====================
-
-  app.post("/api/demands/import", (req, res) => {
-    try {
-      const apiKey = req.headers["x-api-key"] as string;
-      const settings = db.getSettings();
-      if (!settings.apiKey || apiKey !== settings.apiKey) {
-        return res.status(401).json({ error: "API key inválida ou não configurada." });
-      }
-
-      const { type, purpose, city, neighborhoods, maxPrice, bedrooms, parkingSpots, minArea, urgency, paymentMethod, notes, name, phone, email } = req.body;
-
-      if (!maxPrice || !paymentMethod) {
-        return res.status(400).json({ error: "maxPrice e paymentMethod são obrigatórios." });
-      }
-
-      const id = `dem-ext-${Date.now()}`;
-      const newDemand: Demand = {
-        id,
-        type: type || "apartamento",
-        purpose: purpose || "venda",
-        city: city || "Salvador",
-        neighborhoods: neighborhoods || [],
-        maxPrice,
-        bedrooms: bedrooms || 0,
-        parkingSpots: parkingSpots || 0,
-        minArea: minArea || 0,
-        urgency: urgency || "média",
-        paymentMethod,
-        notes: notes ? `${notes}${name ? `\nNome: ${name}` : ""}${phone ? `\nTel: ${phone}` : ""}${email ? `\nEmail: ${email}` : ""}` : `Importado via API externa${name ? `\nNome: ${name}` : ""}${phone ? `\nTel: ${phone}` : ""}${email ? `\nEmail: ${email}` : ""}`,
-        status: "Ativo",
-        createdAt: new Date().toISOString(),
-        createdBy: "api-import"
-      };
-
-      db.createDemand(newDemand);
-      triggerMatchCalculationForDemand(newDemand);
-
-      res.status(201).json({ success: true, demandId: id });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
 
   // ==================== MATCHES & STRATEGIC INSIGHTS ====================
 
   app.get("/api/matches", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
 
       const allMatches = db.getMatches();
 
@@ -583,6 +647,7 @@ export async function createApp() {
   app.patch("/api/matches/:id/status", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const matchId = req.params.id;
       const { status, notes } = req.body;
 
@@ -641,6 +706,7 @@ export async function createApp() {
   app.post("/api/brokers/:id/reviews", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const targetBrokerId = req.params.id;
       const { score, comment } = req.body;
 
@@ -680,6 +746,7 @@ export async function createApp() {
   app.get("/api/favorites", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       res.json(db.getFavorites(user.id));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -689,6 +756,7 @@ export async function createApp() {
   app.post("/api/favorites", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const { favoriteType, targetId } = req.body;
 
       const newFav: Favorite = {
@@ -709,6 +777,7 @@ export async function createApp() {
   app.delete("/api/favorites/:type/:targetId", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       const { type, targetId } = req.params;
       db.deleteFavorite(user.id, type, targetId);
       res.json({ success: true });
@@ -720,6 +789,7 @@ export async function createApp() {
   app.get("/api/notifications", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       res.json(db.getNotifications(user.id));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -738,12 +808,16 @@ export async function createApp() {
   app.post("/api/notifications/read-all", (req, res) => {
     try {
       const user = getContextUser(req);
+      if (!user) return res.status(401).json({ error: "Não autenticado." });
       db.markAllNotificationsAsRead(user.id);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // ==================== ADMIN MIDDLEWARE — all /api/admin/* routes below ====================
+  app.use("/api/admin", adminMiddleware);
 
   // ==================== DATABASE CONTROL PANEL ENDPOINTS ====================
 
@@ -811,9 +885,9 @@ export async function createApp() {
 
   // ==================== ADMINISTRATOR MODERATION ====================
 
-  app.get("/api/admin/metrics", (req, res) => {
+  app.get("/api/admin/metrics", async (req, res) => {
     try {
-      const brokers = db.getBrokers();
+      const brokers = await db.fetchBrokersFromMySQL();
       const properties = db.getProperties();
       const demands = db.getDemands();
       const matches = db.getMatches();
@@ -830,9 +904,10 @@ export async function createApp() {
     }
   });
 
-  app.get("/api/admin/brokers", (req, res) => {
+  app.get("/api/admin/brokers", async (req, res) => {
     try {
-      res.json(db.getBrokers());
+      const brokers = await db.fetchBrokersFromMySQL();
+      res.json(brokers);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -890,15 +965,15 @@ export async function createApp() {
     }
   });
 
-  app.post("/api/admin/profile", (req, res) => {
+  app.post("/api/admin/profile", async (req, res) => {
     try {
       const { id, name, email, creci, phone, photoUrl, city, newPassword } = req.body;
       if (!id) {
         return res.status(400).json({ error: "ID do corretor administrador é válido e obrigatório." });
       }
-      const updated = db.updateBroker(id, { name, email, creci, phone, photoUrl, city });
+      const updated = await db.updateBroker(id, { name, email, creci, phone, photoUrl, city });
       if (newPassword) {
-        db.setPassword(id, newPassword);
+        await db.setPassword(id, newPassword);
       }
       res.json(updated);
     } catch (err: any) {
@@ -914,10 +989,14 @@ export async function createApp() {
       }
 
       const settings = db.getSettings();
-      const s3Url = settings.s3Url || "https://s3.subirei.com.br";
-      const s3AccessKey = settings.s3AccessKey || "BHfYHHqIaBjZjAewKoCJ";
-      const s3SecretKey = settings.s3SecretKey || "vLhG23YaHZ0QNCPjyVIeQwXhbqX5TELRJ0xJYqw1";
-      const s3BucketName = settings.s3BucketName || "imob";
+      const s3Url = settings.s3Url || process.env.S3_URL || "";
+      const s3AccessKey = settings.s3AccessKey || process.env.S3_ACCESS_KEY || "";
+      const s3SecretKey = settings.s3SecretKey || process.env.S3_SECRET_KEY || "";
+      const s3BucketName = settings.s3BucketName || process.env.S3_BUCKET_NAME || "imob";
+
+      if (!s3AccessKey || !s3SecretKey || !s3Url) {
+        return res.status(500).json({ error: "S3 credentials not configured. Set S3_URL, S3_ACCESS_KEY, S3_SECRET_KEY in environment." });
+      }
 
       const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       let mimeType = "image/jpeg";
@@ -969,61 +1048,7 @@ export async function createApp() {
     }
   });
 
-  app.get("/api/files/:bucket/*", async (req, res) => {
-    const bucket = req.params.bucket;
-    const key = (req.params as any)[0];
-    if (!bucket || !key) {
-      return res.status(400).json({ error: "Missing bucket or key" });
-    }
-    try {
-      const settings = db.getSettings();
-      const s3Client = new S3Client({
-        endpoint: settings.s3Url || "https://s3.subirei.com.br",
-        region: "us-east-1",
-        credentials: {
-          accessKeyId: settings.s3AccessKey || "",
-          secretAccessKey: settings.s3SecretKey || "",
-        },
-        forcePathStyle: true,
-      });
-      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-      const response = await s3Client.send(command);
-      const contentType = response.ContentType || "image/jpeg";
-      res.set("Content-Type", contentType);
-      res.set("Cache-Control", "public, max-age=31536000");
-      if (response.Body) {
-        const body = response.Body as any;
-        const chunks: Buffer[] = [];
-        for await (const chunk of body) {
-          chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-        }
-        res.send(Buffer.concat(chunks));
-      }
-      console.log(`[s3] proxied ${key} (${response.ContentLength} bytes)`);
-    } catch (err: any) {
-      console.error(`[s3] error for ${key}: ${err.message}`);
-      res.status(404).json({ error: "File not found" });
-    }
-  });
-
-  app.get("/api/settings", (req, res) => {
-    try {
-      const s = db.getSettings();
-      res.json({ maxPhotosPerProperty: s.maxPhotosPerProperty, proximityRadius: s.proximityRadius || 10, globalCatalogEnabled: !!s.globalCatalogEnabled });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // ==================== CITIES / LOCATIONS MANAGEMENT ====================
-
-  app.get("/api/cities", (req, res) => {
-    try {
-      res.json(db.getCities());
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+  // ==================== CITIES / LOCATIONS MANAGEMENT (admin) ====================
 
   app.get("/api/admin/cities", (req, res) => {
     try {
@@ -1088,7 +1113,7 @@ export async function createApp() {
     }
   });
 
-  app.post("/api/admin/verify", (req, res) => {
+  app.post("/api/admin/verify", async (req, res) => {
     try {
       const { brokerId, action, reason } = req.body;
       if (!brokerId || !action) {
@@ -1096,7 +1121,7 @@ export async function createApp() {
       }
 
       const newStatus = action === "Aprovar" ? "Aprovado" : "Rejeitado";
-      db.updateBroker(brokerId, { status: newStatus });
+      await db.updateBroker(brokerId, { status: newStatus });
 
       const msgTitle = action === "Aprovar" ? "Seu CRECI foi Aprovado! 🎉" : "Comprobante CRECI recusado ❌";
       const msgText = action === "Aprovar"
@@ -1119,14 +1144,13 @@ export async function createApp() {
     }
   });
 
-  // Toggle admin status for any broker
-  app.post("/api/admin/toggle-admin", (req, res) => {
+  app.post("/api/admin/toggle-admin", async (req, res) => {
     try {
       const { brokerId, isAdmin } = req.body;
       if (!brokerId || isAdmin === undefined) {
         return res.status(400).json({ error: "brokerId and isAdmin required" });
       }
-      const updated = db.updateBroker(brokerId, { isAdmin: Boolean(isAdmin) });
+      const updated = await db.updateBroker(brokerId, { isAdmin: Boolean(isAdmin) });
       res.json({ success: true, broker: updated });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -1134,9 +1158,9 @@ export async function createApp() {
   });
 
   // Delete broker
-  app.delete("/api/admin/brokers/:id", (req, res) => {
+  app.delete("/api/admin/brokers/:id", async (req, res) => {
     try {
-      const deleted = db.deleteBroker(req.params.id);
+      const deleted = await db.deleteBroker(req.params.id);
       if (deleted) {
         res.json({ success: true });
       } else {
@@ -1148,9 +1172,9 @@ export async function createApp() {
   });
 
   // Update broker fields (edit)
-  app.put("/api/admin/brokers/:id", (req, res) => {
+  app.put("/api/admin/brokers/:id", async (req, res) => {
     try {
-      const { name, email, phone, whatsapp, city, creci, status } = req.body;
+      const { name, email, phone, whatsapp, city, creci, status, password, photoUrl, specialties } = req.body;
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (email !== undefined) updates.email = email;
@@ -1159,8 +1183,29 @@ export async function createApp() {
       if (city !== undefined) updates.city = city;
       if (creci !== undefined) updates.creci = creci;
       if (status !== undefined) updates.status = status;
-      const updated = db.updateBroker(req.params.id, updates);
+      if (photoUrl !== undefined) updates.photoUrl = photoUrl;
+      if (specialties !== undefined) updates.specialties = specialties;
+      let updated;
+      if (Object.keys(updates).length > 0) {
+        updated = await db.updateBroker(req.params.id, updates);
+      } else {
+        updated = db.getBroker(req.params.id);
+      }
+      if (password) {
+        await db.setPassword(req.params.id, password);
+      }
       res.json({ success: true, broker: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/impersonate/:id", (req, res) => {
+    try {
+      const target = db.getBroker(req.params.id);
+      if (!target) return res.status(404).json({ error: "Corretor não encontrado." });
+      setAuthCookie(res, { brokerId: target.id, isAdmin: !!target.isAdmin });
+      res.json(target);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

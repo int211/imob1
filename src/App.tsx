@@ -103,14 +103,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const uid = localStorage.getItem("conectacorretor_user_id");
-    if (uid) {
-      fetchAllData();
-      setShowLogin(false);
-    } else {
-      setShowLogin(true);
-      setLoading(false);
-    }
+    fetch("/api/auth/me")
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error("Not authenticated");
+      })
+      .then((user) => {
+        setActiveBroker(user);
+        localStorage.setItem("conectacorretor_user_id", user.id);
+        setShowLogin(false);
+        fetchAllData();
+      })
+      .catch(() => {
+        localStorage.removeItem("conectacorretor_user_id");
+        setShowLogin(true);
+        setLoading(false);
+      });
   }, []);
 
   const convertToBase64 = (file: File): Promise<string> => {
@@ -262,15 +270,13 @@ export default function App() {
     (e.target as HTMLImageElement).style.display = "none";
   };
 
-  // Toggle user-id header for full simulated sandbox state
   const getActiveUserId = () => {
-    return localStorage.getItem("conectacorretor_user_id") || "admin-id";
+    return localStorage.getItem("conectacorretor_user_id") || "";
   };
 
   const getHeaders = () => {
     return {
-      "Content-Type": "application/json",
-      "x-user-id": getActiveUserId()
+      "Content-Type": "application/json"
     };
   };
 
@@ -360,12 +366,18 @@ export default function App() {
     });
   }, [properties, demands, matches]);
 
-  // Switch simulation broker context instantly!
   const handleSwitchBroker = async (id: string) => {
-    localStorage.setItem("conectacorretor_user_id", id);
-    setIsSwitchBrokerOpen(false);
-    await fetchAllData();
-    setActiveTab("inicio");
+    try {
+      const res = await fetch(`/api/admin/impersonate/${id}`, { method: "POST" });
+      if (res.ok) {
+        localStorage.setItem("conectacorretor_user_id", id);
+        setIsSwitchBrokerOpen(false);
+        await fetchAllData();
+        setActiveTab("inicio");
+      }
+    } catch (err) {
+      console.error("Impersonate failed", err);
+    }
   };
 
   const handleLoginSuccess = (user: Corretor) => {
@@ -375,7 +387,8 @@ export default function App() {
     fetchAllData();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     localStorage.removeItem("conectacorretor_user_id");
     setActiveBroker(null);
     setShowLogin(true);
@@ -613,16 +626,20 @@ export default function App() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-xs font-semibold text-[#86868b] dark:text-dark-muted">
-              Ambiente de Demonstração Imobiliária
-            </span>
-            <button
-              onClick={() => setIsSwitchBrokerOpen(true)}
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1d1d1f] dark:text-dark-text bg-white dark:bg-dark-card hover:bg-[#f5f5f7] dark:hover:bg-gray-700 rounded-full px-3 py-1.5 border border-[#d2d2d7] dark:border-dark-border transition cursor-pointer"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Alternar Corretor Ativo
-            </button>
+            {activeBroker?.isAdmin && (
+              <>
+                <span className="text-xs font-semibold text-[#86868b] dark:text-dark-muted">
+                  Ambiente de Demonstração Imobiliária
+                </span>
+                <button
+                  onClick={() => setIsSwitchBrokerOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1d1d1f] dark:text-dark-text bg-white dark:bg-dark-card hover:bg-[#f5f5f7] dark:hover:bg-gray-700 rounded-full px-3 py-1.5 border border-[#d2d2d7] dark:border-dark-border transition cursor-pointer"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Alternar Corretor Ativo
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -897,9 +914,7 @@ export default function App() {
                               return (
                                 <div
                                   key={item.id}
-                                  className={`group rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative flex flex-col justify-between overflow-hidden ${
-                                    isOwn ? "ring-1 ring-blue-100 dark:ring-blue-800" : ""
-                                  }`}
+                                  className={`group rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative flex flex-col items-start overflow-hidden`}
                                 >
                                   {/* Feed Card Cover Image */}
                                   {item.photos && item.photos.length > 0 ? (
@@ -907,12 +922,12 @@ export default function App() {
                                       <img src={item.photos[0]} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
                                     </div>
                                   ) : (
-                                    <div className="relative h-36 w-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
-                                      <img src={item.coverPhoto || PLACEHOLDER_IMG} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
-                                    </div>
-                                  )}
-                                  <div className="p-5">
-                                    <div className="space-y-3 text-xs">
+                                  <div className="relative h-36 w-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
+                                    <img src={item.coverPhoto || PLACEHOLDER_IMG} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" onError={hideBrokenImg} />
+                                  </div>
+                                )}
+                                <div className="p-5 flex flex-col flex-1">
+                                  <div className="space-y-3 text-xs">
                                       <div className="flex items-center justify-between">
                                         <span className="inline-flex rounded-full border px-2.5 py-0.5 font-bold uppercase tracking-wider text-[9px] bg-blue-50 text-blue-700 border-blue-200">
                                           Oferta / imóvel
@@ -939,7 +954,7 @@ export default function App() {
                                         {item.area && <><span>•</span><span>{item.area}m²</span></>}
                                       </div>
                                     </div>
-                                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-dark-border mt-4 pt-3 text-xs">
+                                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-dark-border mt-auto pt-3 text-xs">
                                       <div>
                                         <span className="text-[9px] text-gray-400 dark:text-dark-muted font-bold uppercase block leading-none">Preço</span>
                                         <p className="text-sm font-bold text-gray-900 dark:text-dark-text mt-1">R$ {item.price.toLocaleString("pt-BR")}</p>
@@ -980,8 +995,8 @@ export default function App() {
                             {demandItems.map((item) => {
                               const isOwn = item.createdBy === getActiveUserId();
                               return (
-                                <div key={item.id} className={`group rounded-2xl border border-purple-100 bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative ${isOwn ? "ring-1 ring-purple-100" : ""}`}>
-                                  <div className="p-4">
+                                <div key={item.id} className={`group rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card shadow-sm hover:shadow-md transition-all relative ${isOwn ? "ring-1 ring-blue-100 dark:ring-blue-800" : ""}`}>
+                                  <div className="p-5">
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="space-y-2 flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
@@ -1358,31 +1373,11 @@ export default function App() {
                     </>
                   )}
 
-                  {!isEditingProfile && (
-                    !activeBroker.isAdmin ? (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch("/api/auth/make-admin", { method: "POST", headers: getHeaders() });
-                            if (res.ok) {
-                              const updated = await res.json();
-                              setActiveBroker(updated);
-                              await fetchAllData();
-                              alert("Parabéns! Sua conta agora possui privilégios de Administrador. Use a barra lateral para acessar o painel de controle.");
-                            } else alert("Falha ao atualizar conta");
-                          } catch (err) { alert("Erro de rede ao definir privilégios de administrador"); }
-                        }}
-                        className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 py-2.5 font-bold text-white text-xs cursor-pointer flex items-center justify-center gap-1 transition-all"
-                      >
-                        <ShieldAlert className="h-4 w-4" />
-                        Tornar-se Administrador
-                      </button>
-                    ) : (
+                  {!isEditingProfile && activeBroker.isAdmin && (
                       <div className="p-2 py-1.5 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 text-[10px] font-bold flex items-center justify-center gap-1">
                         <Award className="h-4 w-4 text-purple-600" />
                         Acesso Administrador Ativo
                       </div>
-                    )
                   )}
                 </div>
 
@@ -1644,6 +1639,8 @@ export default function App() {
                 setIsEditingPhotos(true);
                 setEditingPhotosList(prop.photos || []);
               }}
+              isDark={isDark}
+              setIsDark={setIsDark}
             />
           )}
         </div>

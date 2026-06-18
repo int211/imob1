@@ -50,7 +50,6 @@ export default function DemandForm({ onSuccess, onCancel, cities, editDemand }: 
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": localStorage.getItem("conectacorretor_user_id") || "admin-id" 
         },
         body: JSON.stringify({
           city,
@@ -115,7 +114,6 @@ export default function DemandForm({ onSuccess, onCancel, cities, editDemand }: 
         method,
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": localStorage.getItem("conectacorretor_user_id") || "admin-id" 
         },
         body: JSON.stringify({
           type,

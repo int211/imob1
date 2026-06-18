@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Pool } from "pg";
 import { Corretor, Property, Demand, Match, Favorite, Notification, Rating, MatchHistory, SystemSettings, City } from "../src/types.js";
+import { hashPassword, comparePassword, hashPasswordSync } from "./auth.js";
 
 const DATABASE_FILE = path.join(process.cwd(), "data", "database.json");
 
@@ -35,11 +36,11 @@ export const dbStatus = {
 
 // Initialize background connection
 async function initMySQL() {
-  const NEON_URL = "postgresql://neondb_owner:npg_OHx0M9ybkGoI@ep-misty-dew-ac6fww4f.sa-east-1.aws.neon.tech/neondb?sslmode=require";
-const connectionString = process.env.DATABASE_URL || NEON_URL;
-if (connectionString !== NEON_URL) {
-  console.warn("[neon] Using DATABASE_URL from env (different from hardcoded). If connection fails, check the env var value.");
-}
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error("[neon] DATABASE_URL not set. Set it in .env or environment. Running in offline mode.");
+    return false;
+  }
 
   console.log(`Connecting to Neon PostgreSQL...`);
   try {
@@ -104,15 +105,47 @@ export class OfflineDB {
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7)");
       await this.pq("ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7)");
       await this.pq("CREATE TABLE IF NOT EXISTS app_settings (id TEXT PRIMARY KEY DEFAULT 'main', data JSONB)");
+      await this.pq("CREATE TABLE IF NOT EXISTS broker_passwords (broker_id TEXT PRIMARY KEY, hash TEXT NOT NULL, updated_at TIMESTAMP DEFAULT NOW())");
       try {
         await this.syncFromMySQL();
       } catch (err: any) {
         console.error("Failed to sync from MySQL tables. Bootstrapping seeding to MySQL instead...", err.message);
         await this.seedToMySQL();
       }
+      await this.syncPasswordsFromNeon();
       await this.syncSettingsFromNeon();
     } else {
       this._retryConnection();
+    }
+  }
+
+  private async syncPasswordsFromNeon() {
+    if (!pool) return;
+    try {
+      const { rows } = await pool.query("SELECT broker_id, hash FROM broker_passwords");
+      if (rows.length > 0) {
+        if (!this.data.passwords) this.data.passwords = {};
+        for (const row of rows) {
+          this.data.passwords[row.broker_id] = row.hash;
+        }
+        this.saveLocal();
+        console.log(`[passwords] Loaded ${rows.length} passwords from Neon`);
+      }
+    } catch (err: any) {
+      console.warn("[passwords] Could not load from Neon:", err.message);
+    }
+  }
+
+  private async savePasswordToNeon(brokerId: string, hash: string) {
+    if (!pool) return;
+    try {
+      await pool.query(
+        `INSERT INTO broker_passwords (broker_id, hash, updated_at) VALUES ($1, $2, NOW())
+         ON CONFLICT (broker_id) DO UPDATE SET hash = $2, updated_at = NOW()`,
+        [brokerId, hash]
+      );
+    } catch (err: any) {
+      console.warn(`[passwords] Could not save to Neon for ${brokerId}:`, err.message);
     }
   }
 
@@ -282,12 +315,13 @@ export class OfflineDB {
       }
     ];
 
+    const hashed = hashPasswordSync("123456");
     this.data.passwords = {
-      "broker-renato": "123456",
-      "broker-mariana": "123456",
-      "broker-ana": "123456",
-      "broker-ricardo": "123456",
-      "broker-1781118286367": "123456",
+      "broker-renato": hashed,
+      "broker-mariana": hashed,
+      "broker-ana": hashed,
+      "broker-ricardo": hashed,
+      "broker-1781118286367": hashed,
     };
 
     const seedProperties: Property[] = [
@@ -451,7 +485,7 @@ export class OfflineDB {
     }
     for (const b of this.data.brokers) {
       if (!this.data.passwords[b.id]) {
-        this.data.passwords[b.id] = "123456";
+        this.data.passwords[b.id] = hashPasswordSync("123456");
       }
     }
   }
@@ -462,7 +496,10 @@ export class OfflineDB {
   public async syncFromMySQL() {
     if (!pool) return;
     try {
-      console.log("Loading relational tables from MySQL VPS...");
+      console.log("Loading relational tables from Neon PostgreSQL...");
+      
+      // Save local-only brokers before overwriting (development seed data + new registrations not yet in Neon)
+      const localBrokersBeforeSync = [...this.data.brokers];
       
       // 1. Corretores
       const { rows: rawBrokers }: any = await pool.query("SELECT * FROM corretores");
@@ -574,6 +611,11 @@ export class OfflineDB {
 
       // Add Demand Neighborhoods
       const { rows: rawNeighs }: any = await pool.query("SELECT * FROM demand_neighborhoods");
+      for (const row of rawNeighs) {
+        if (demandsMap[row.demand_id]) {
+          demandsMap[row.demand_id].neighborhoods.push(row.neighborhood);
+        }
+      }
 
       // 4. Matches
       const { rows: rawMatches }: any = await pool.query("SELECT * FROM matches");
@@ -631,39 +673,58 @@ export class OfflineDB {
         createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString()
       }));
 
-      // Overwrite local memory structure with values from VPS (guarantees state consistency)
+      // ================================================================
+      // NEON IS THE SOURCE OF TRUTH — full overwrite local memory cache
+      // ================================================================
+      const neonBrokerIds = new Set(Object.keys(brokersMap));
+      
       this.data.brokers = Object.values(brokersMap);
       this.data.properties = Object.values(propsMap);
       this.data.demands = Object.values(demandsMap);
       this.data.matches = Object.values(matchesMap);
+      this.data.favorites = favorites;
+      this.data.notifications = notifications;
+      this.data.ratings = ratings;
 
-      // Merge favorites: keep local favorites that aren't in MySQL yet
-      if (favorites.length > 0) {
-        const mysqlFavKey = new Set(favorites.map(f => `${f.brokerId}:${f.favoriteType}:${f.targetId}`));
-        const localFavs = (this.data.favorites || []).filter(f => !mysqlFavKey.has(`${f.brokerId}:${f.favoriteType}:${f.targetId}`));
-        this.data.favorites = [...favorites, ...localFavs];
-      }
-      if (notifications.length > 0) {
-        const mysqlNotKey = new Set(notifications.map(n => n.id));
-        const localNots = (this.data.notifications || []).filter(n => !mysqlNotKey.has(n.id));
-        this.data.notifications = [...notifications, ...localNots];
-      }
-      if (ratings.length > 0) {
-        const mysqlRatKey = new Set(ratings.map(r => r.id));
-        const localRats = (this.data.ratings || []).filter(r => !mysqlRatKey.has(r.id));
-        this.data.ratings = [...ratings, ...localRats];
+      // Merge local-only brokers (development seed + new registrations not yet in Neon)
+      const localOnly = localBrokersBeforeSync.filter(b => !neonBrokerIds.has(b.id));
+      if (localOnly.length > 0) {
+        this.data.brokers = [...this.data.brokers, ...localOnly];
+        console.log(`[sync] Merged ${localOnly.length} local-only brokers not yet in Neon`);
+        
+        // Try to push local-only brokers to Neon so they don't stay out of sync
+        for (const b of localOnly) {
+          try {
+            await this.executeMySQLWriteCritical(
+              `INSERT INTO corretores (id, name, email, creci, phone, whatsapp, city, status, photo_url, rating, responding_rate, closed_deals, is_admin, ident_doc_url, creci_doc_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, creci=EXCLUDED.creci, phone=EXCLUDED.phone, whatsapp=EXCLUDED.whatsapp, city=EXCLUDED.city, status=EXCLUDED.status, photo_url=EXCLUDED.photo_url, rating=EXCLUDED.rating, responding_rate=EXCLUDED.responding_rate, closed_deals=EXCLUDED.closed_deals, is_admin=EXCLUDED.is_admin, ident_doc_url=EXCLUDED.ident_doc_url, creci_doc_url=EXCLUDED.creci_doc_url`,
+              [b.id, b.name, b.email, b.creci, b.phone, b.whatsapp || null, b.city, b.status, b.photoUrl || null, b.rating || 5.0, b.respondingRate || 100, b.closedDeals || 0, b.isAdmin ?? false, b.identDocUrl || null, b.creciDocUrl || null]
+            );
+            if (b.specialties) {
+              await this.executeMySQLWriteCritical("DELETE FROM corretor_specialties WHERE corretor_id = ?", [b.id]);
+              for (const s of b.specialties) {
+                await this.executeMySQLWriteCritical("INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)", [b.id, s]);
+              }
+            }
+            console.log(`[sync] Pushed local-only broker ${b.id} to Neon`);
+          } catch (e: any) {
+            console.warn(`[sync] Could not push broker ${b.id} to Neon: ${e.message}`);
+          }
+        }
       }
 
       this.ensurePasswords();
       dbStatus.initializedFromSQL = true;
-      console.log("MySQL Synchronization complete! Synchronized: " + 
+      console.log("Neon Synchronization complete! Synchronized: " + 
         `${this.data.brokers.length} brokers, ${this.data.properties.length} properties, ` + 
-        `${this.data.demands.length} demands, ${this.data.matches.length} matches.`);
+        `${this.data.demands.length} demands, ${this.data.matches.length} matches.` +
+        ` (${localOnly.length} local-only brokers merged)`);
       
-      // Save localized safety backup copies
+      // Persist the synced state to local JSON cache
       this.saveLocal();
     } catch (err: any) {
-      console.error("Critical error mapping tables from MySQL:", err);
+      console.error("Critical error mapping tables from Neon:", err);
       dbStatus.initializedFromSQL = false;
       throw err;
     }
@@ -768,16 +829,33 @@ export class OfflineDB {
   // BACKGROUND WRITE QUERY WRAPPERS
   // ==========================================
   private async executeMySQLWrite(query: string, params: any[]) {
-    if (!pool) return;
+    if (!pool) {
+      console.log("[executeMySQLWrite] Pool is null, skipping write");
+      return;
+    }
     try {
       let i = 0;
       const pgSql = query.replace(/\?/g, () => `$${++i}`);
+      console.log(`[executeMySQLWrite] Executing query: ${pgSql.substring(0, 100)}...`);
+      console.log(`[executeMySQLWrite] Params:`, params);
       await pool.query(pgSql, params);
       dbStatus.writesLogged++;
+      console.log(`[executeMySQLWrite] Write successful`);
     } catch (err: any) {
       dbStatus.writesFailed++;
       console.error("Failed PostgreSQL passive background sync statement:", err.message);
     }
+  }
+
+  /** Like executeMySQLWrite but throws on failure — for Neon-first write-through. */
+  private async executeMySQLWriteCritical(query: string, params: any[]): Promise<void> {
+    if (!pool) {
+      throw new Error("Neon database is not connected");
+    }
+    let i = 0;
+    const pgSql = query.replace(/\?/g, () => `$${++i}`);
+    await pool.query(pgSql, params);
+    dbStatus.writesLogged++;
   }
 
   // Convert ? to $N for PostgreSQL compatibility
@@ -799,6 +877,81 @@ export class OfflineDB {
     return this.data.brokers;
   }
 
+  public async fetchBrokersFromMySQL(): Promise<Corretor[]> {
+    if (!pool) {
+      return this.data.brokers;
+    }
+    try {
+      const { rows: rawBrokers }: any = await pool.query("SELECT * FROM corretores");
+      const brokersMap: { [key: string]: Corretor } = {};
+      for (const row of rawBrokers) {
+        brokersMap[row.id] = {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          creci: row.creci,
+          phone: row.phone,
+          whatsapp: row.whatsapp || undefined,
+          city: row.city,
+          status: row.status,
+          photoUrl: row.photo_url || undefined,
+          rating: Number(row.rating),
+          respondingRate: row.responding_rate,
+          closedDeals: row.closed_deals,
+          isAdmin: Boolean(row.is_admin),
+          identDocUrl: row.ident_doc_url || undefined,
+          creciDocUrl: row.creci_doc_url || undefined,
+          specialties: []
+        };
+      }
+
+      // Add Broker Specialties
+      const { rows: rawSpecs }: any = await pool.query("SELECT * FROM corretor_specialties");
+      for (const row of rawSpecs) {
+        if (brokersMap[row.corretor_id]) {
+          brokersMap[row.corretor_id].specialties?.push(row.specialty);
+        }
+      }
+      
+      // Update local cache with fresh Neon data
+      const neonBrokers = Object.values(brokersMap);
+      const neonIds = new Set(neonBrokers.map(b => b.id));
+      const localOnly = this.data.brokers.filter(b => !neonIds.has(b.id));
+      
+      this.data.brokers = [...neonBrokers, ...localOnly];
+      this.saveLocal();
+      
+      if (localOnly.length > 0) {
+        console.log(`[fetchBrokers] Including ${localOnly.length} local-only brokers not yet in Neon — pushing them now...`);
+        for (const b of localOnly) {
+          try {
+            await this.executeMySQLWriteCritical(
+              `INSERT INTO corretores (id, name, email, creci, phone, whatsapp, city, status, photo_url, rating, responding_rate, closed_deals, is_admin, ident_doc_url, creci_doc_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, creci=EXCLUDED.creci, phone=EXCLUDED.phone, whatsapp=EXCLUDED.whatsapp, city=EXCLUDED.city, status=EXCLUDED.status, photo_url=EXCLUDED.photo_url, rating=EXCLUDED.rating, responding_rate=EXCLUDED.responding_rate, closed_deals=EXCLUDED.closed_deals, is_admin=EXCLUDED.is_admin, ident_doc_url=EXCLUDED.ident_doc_url, creci_doc_url=EXCLUDED.creci_doc_url`,
+              [b.id, b.name, b.email, b.creci, b.phone, b.whatsapp || null, b.city, b.status, b.photoUrl || null, b.rating || 5.0, b.respondingRate || 100, b.closedDeals || 0, b.isAdmin ?? false, b.identDocUrl || null, b.creciDocUrl || null]
+            );
+            if (b.specialties) {
+              await this.executeMySQLWriteCritical("DELETE FROM corretor_specialties WHERE corretor_id = ?", [b.id]);
+              for (const s of b.specialties) {
+                await this.executeMySQLWriteCritical("INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)", [b.id, s]);
+              }
+            }
+            console.log(`[fetchBrokers] Pushed local-only broker ${b.id} (${b.name}) to Neon`);
+          } catch (pushErr: any) {
+            console.warn(`[fetchBrokers] Could not push broker ${b.id} to Neon: ${pushErr.message}`);
+          }
+        }
+      } else {
+        console.log(`[fetchBrokers] Updated local cache: ${neonBrokers.length} from Neon, all in sync`);
+      }
+      return this.data.brokers;
+    } catch (err: any) {
+      console.error("Failed to fetch brokers from Neon:", err.message);
+      return this.data.brokers;
+    }
+  }
+
   public getBroker(id: string): Corretor | undefined {
     return this.data.brokers.find(b => b.id === id);
   }
@@ -807,67 +960,111 @@ export class OfflineDB {
     return this.data.brokers.find(b => b.email.toLowerCase() === email.toLowerCase());
   }
 
-  public validatePassword(brokerId: string, password: string): boolean {
+  public async validatePassword(brokerId: string, password: string): Promise<boolean> {
     const stored = (this.data.passwords || {})[brokerId];
-    if (stored) return stored === password;
-    return password === "123456";
+    if (!stored) return false;
+    const valid = await comparePassword(password, stored);
+    if (valid && !stored.startsWith("$2")) {
+      await this.setPassword(brokerId, password);
+    }
+    return valid;
   }
 
-  public setPassword(brokerId: string, password: string): void {
+  public async setPassword(brokerId: string, password: string): Promise<void> {
     if (!this.data.passwords) this.data.passwords = {};
-    this.data.passwords[brokerId] = password;
+    const hash = await hashPassword(password);
+    this.data.passwords[brokerId] = hash;
     this.saveLocal();
+    await this.savePasswordToNeon(brokerId, hash);
   }
 
-  public createBroker(broker: Corretor): Corretor {
-    this.data.brokers.push(broker);
-    this.saveLocal();
+  public async createBroker(broker: Corretor): Promise<Corretor> {
+    console.log(`[createBroker] Creating broker ${broker.id} (${broker.name})`);
 
-    // Background push
-    this.executeMySQLWrite(
+    // Neon-first: write to Neon BEFORE updating local cache
+    await this.executeMySQLWriteCritical(
       `INSERT INTO corretores (id, name, email, creci, phone, whatsapp, city, status, photo_url, rating, responding_rate, closed_deals, is_admin, ident_doc_url, creci_doc_url)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [broker.id, broker.name, broker.email, broker.creci, broker.phone, broker.whatsapp || null, broker.city, broker.status, broker.photoUrl || null, broker.rating || 5.0, broker.respondingRate || 100, broker.closedDeals || 0, broker.isAdmin, broker.identDocUrl || null, broker.creciDocUrl || null]
-    ).then(async () => {
-      if (pool && broker.specialties) {
-        for (const s of broker.specialties) {
-          await this.executeMySQLWrite("INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)", [broker.id, s]);
-        }
+      [broker.id, broker.name, broker.email, broker.creci, broker.phone || "+55 (71) 99999-0000", broker.whatsapp || null, broker.city, broker.status, broker.photoUrl || null, broker.rating || 5.0, broker.respondingRate || 100, broker.closedDeals || 0, broker.isAdmin, broker.identDocUrl || null, broker.creciDocUrl || null]
+    );
+
+    // Write specialties
+    if (pool && broker.specialties) {
+      for (const s of broker.specialties) {
+        await this.executeMySQLWriteCritical(
+          "INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)",
+          [broker.id, s]
+        );
       }
-    });
+    }
+
+    // Neon write succeeded — now update local cache
+    this.data.brokers.push(broker);
+    this.saveLocal();
+    console.log(`[createBroker] Broker ${broker.id} created in Neon + cached locally`);
 
     return broker;
   }
 
-  public updateBroker(id: string, updates: Partial<Corretor>): Corretor {
+  public async updateBroker(id: string, updates: Partial<Corretor>): Promise<Corretor> {
     const idx = this.data.brokers.findIndex(b => b.id === id);
-    if (idx !== -1) {
-      this.data.brokers[idx] = { ...this.data.brokers[idx], ...updates };
-      this.saveLocal();
+    if (idx === -1) throw new Error("Broker not found");
 
-      // Formulate background SQL UPDATE fields dynamically
-      const bk = this.data.brokers[idx];
-      this.executeMySQLWrite(
-        `UPDATE corretores 
-         SET name=?, email=?, creci=?, phone=?, whatsapp=?, city=?, status=?, photo_url=?, rating=?, responding_rate=?, closed_deals=?, is_admin=?, ident_doc_url=?, creci_doc_url=?
-         WHERE id=?`,
-        [bk.name, bk.email, bk.creci, bk.phone, bk.whatsapp || null, bk.city, bk.status, bk.photoUrl || null, bk.rating || 5.0, bk.respondingRate || 100, bk.closedDeals || 0, bk.isAdmin, bk.identDocUrl || null, bk.creciDocUrl || null, id]
-      ).then(async () => {
-        if (pool && updates.specialties) {
-          await this.executeMySQLWrite("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
-          for (const s of updates.specialties) {
-            await this.executeMySQLWrite("INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)", [id, s]);
-          }
-        }
-      });
+    // Compute the new state before writing to Neon
+    const updated = { ...this.data.brokers[idx], ...updates };
 
-      return this.data.brokers[idx];
+    // Neon-first: write to Neon BEFORE updating local cache
+    await this.executeMySQLWriteCritical(
+      `UPDATE corretores 
+       SET name=?, email=?, creci=?, phone=?, whatsapp=?, city=?, status=?, photo_url=?, rating=?, responding_rate=?, closed_deals=?, is_admin=?, ident_doc_url=?, creci_doc_url=?
+       WHERE id=?`,
+      [updated.name, updated.email, updated.creci, updated.phone, updated.whatsapp || null, updated.city, updated.status, updated.photoUrl || null, updated.rating || 5.0, updated.respondingRate || 100, updated.closedDeals || 0, updated.isAdmin, updated.identDocUrl || null, updated.creciDocUrl || null, id]
+    );
+
+    // Update specialties if changed
+    if (pool && updates.specialties) {
+      await this.executeMySQLWriteCritical("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
+      for (const s of updates.specialties) {
+        await this.executeMySQLWriteCritical(
+          "INSERT INTO corretor_specialties (corretor_id, specialty) VALUES (?, ?)",
+          [id, s]
+        );
+      }
     }
-    throw new Error("Broker not found");
+
+    // Neon write succeeded — now update local cache
+    this.data.brokers[idx] = updated;
+    this.saveLocal();
+
+    return this.data.brokers[idx];
   }
 
-  public deleteBroker(id: string): boolean {
+  /** Synchronous local-only update (no Neon write). Used by internal callers (ratings, match close). */
+  private _updateBrokerLocal(id: string, updates: Partial<Corretor>): Corretor {
+    const idx = this.data.brokers.findIndex(b => b.id === id);
+    if (idx === -1) throw new Error("Broker not found");
+    this.data.brokers[idx] = { ...this.data.brokers[idx], ...updates };
+    this.saveLocal();
+    // Fire background Neon sync (best-effort)
+    const bk = this.data.brokers[idx];
+    this.executeMySQLWrite(
+      `UPDATE corretores SET name=?, email=?, creci=?, phone=?, whatsapp=?, city=?, status=?, photo_url=?, rating=?, responding_rate=?, closed_deals=?, is_admin=?, ident_doc_url=?, creci_doc_url=? WHERE id=?`,
+      [bk.name, bk.email, bk.creci, bk.phone, bk.whatsapp || null, bk.city, bk.status, bk.photoUrl || null, bk.rating || 5.0, bk.respondingRate || 100, bk.closedDeals || 0, bk.isAdmin, bk.identDocUrl || null, bk.creciDocUrl || null, id]
+    );
+    return this.data.brokers[idx];
+  }
+
+  public async deleteBroker(id: string): Promise<boolean> {
     const lenBefore = this.data.brokers.length;
+
+    // Neon-first: delete related data + broker from Neon BEFORE touching local cache
+    await this.executeMySQLWriteCritical("DELETE FROM notifications WHERE broker_id = ?", [id]);
+    await this.executeMySQLWriteCritical("DELETE FROM favorites WHERE broker_id = ?", [id]);
+    await this.executeMySQLWriteCritical("DELETE FROM ratings WHERE broker_id = ?", [id]);
+    await this.executeMySQLWriteCritical("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
+    await this.executeMySQLWriteCritical("DELETE FROM corretores WHERE id = ?", [id]);
+
+    // Neon delete succeeded — now update local cache
     this.data.brokers = this.data.brokers.filter(b => b.id !== id);
     this.data.properties = this.data.properties.filter(p => p.createdBy !== id);
     this.data.demands = this.data.demands.filter(d => d.createdBy !== id);
@@ -878,11 +1075,7 @@ export class OfflineDB {
     });
     this.data.notifications = this.data.notifications.filter(n => n.brokerId !== id);
     this.saveLocal();
-    this.executeMySQLWrite("DELETE FROM notifications WHERE broker_id = ?", [id]);
-    this.executeMySQLWrite("DELETE FROM favorites WHERE broker_id = ?", [id]);
-    this.executeMySQLWrite("DELETE FROM ratings WHERE broker_id = ?", [id]);
-    this.executeMySQLWrite("DELETE FROM corretor_specialties WHERE corretor_id = ?", [id]);
-    this.executeMySQLWrite("DELETE FROM corretores WHERE id = ?", [id]);
+
     return this.data.brokers.length < lenBefore;
   }
 
@@ -894,7 +1087,7 @@ export class OfflineDB {
     const brokerReviews = this.data.ratings.filter(r => r.brokerId === rating.brokerId);
     if (brokerReviews.length > 0) {
       const avg = brokerReviews.reduce((sum, r) => sum + r.score, 0) / brokerReviews.length;
-      this.updateBroker(rating.brokerId, { rating: Number(avg.toFixed(1)) });
+      this._updateBrokerLocal(rating.brokerId, { rating: Number(avg.toFixed(1)) });
     }
     
     this.saveLocal();
@@ -921,22 +1114,30 @@ export class OfflineDB {
     return this.data.properties.find(p => p.id === id);
   }
 
-  public createProperty(prop: Property): Property {
-    this.data.properties.push(prop);
-    this.saveLocal();
+  public async createProperty(prop: Property): Promise<Property> {
+    console.log(`[createProperty] Creating property ${prop.id} (${prop.title})`);
 
-    // Backport to PostgreSQL
-    this.executeMySQLWrite(
+    // Neon-first: write to Neon BEFORE updating local cache
+    await this.executeMySQLWriteCritical(
       `INSERT INTO properties (id, title, type, purpose, price, city, neighborhood, description, bedrooms, bathrooms, parking_spots, area, commission, accepts_partnership, condo_fee, iptu, virtual_tour, video_url, status, created_by, photos, latitude, longitude)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [prop.id, prop.title, prop.type, prop.purpose, prop.price, prop.city, prop.neighborhood, prop.description, prop.bedrooms, prop.bathrooms, prop.parkingSpots, prop.area, prop.commission, prop.acceptsPartnership ? 1 : 0, prop.condoFee || null, prop.iptu || null, prop.virtualTour || null, prop.videoUrl || null, prop.status, prop.createdBy, JSON.stringify(prop.photos || []), prop.latitude || null, prop.longitude || null]
-    ).then(async () => {
-      if (pool && prop.features) {
-        for (const f of prop.features) {
-          await this.executeMySQLWrite("INSERT INTO property_features (property_id, feature) VALUES (?, ?)", [prop.id, f]);
-        }
+      [prop.id, prop.title, prop.type, prop.purpose, prop.price, prop.city, prop.neighborhood, prop.description, prop.bedrooms, prop.bathrooms, prop.parkingSpots, prop.area, prop.commission, prop.acceptsPartnership, prop.condoFee || null, prop.iptu || null, prop.virtualTour || null, prop.videoUrl || null, prop.status, prop.createdBy, JSON.stringify(prop.photos || []), prop.latitude || null, prop.longitude || null]
+    );
+
+    // Write features
+    if (pool && prop.features) {
+      for (const f of prop.features) {
+        await this.executeMySQLWriteCritical(
+          "INSERT INTO property_features (property_id, feature) VALUES (?, ?)",
+          [prop.id, f]
+        );
       }
-    });
+    }
+
+    // Neon write succeeded — now update local cache
+    this.data.properties.push(prop);
+    this.saveLocal();
+    console.log(`[createProperty] Property ${prop.id} created in Neon + cached locally`);
 
     return prop;
   }
@@ -1040,22 +1241,30 @@ export class OfflineDB {
     return this.data.demands.find(d => d.id === id);
   }
 
-  public createDemand(demand: Demand): Demand {
-    this.data.demands.push(demand);
-    this.saveLocal();
+  public async createDemand(demand: Demand): Promise<Demand> {
+    console.log(`[createDemand] Creating demand ${demand.id} (${demand.type} - ${demand.city})`);
 
-    // Backport write queries
-    this.executeMySQLWrite(
+    // Neon-first: write to Neon BEFORE updating local cache
+    await this.executeMySQLWriteCritical(
       `INSERT INTO demands (id, type, purpose, city, max_price, bedrooms, parking_spots, min_area, urgency, payment_method, notes, ia_raw_text, use_ia, cover_photo, status, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [demand.id, demand.type, demand.purpose, demand.city, demand.maxPrice, demand.bedrooms, demand.parkingSpots, demand.minArea, demand.urgency, demand.paymentMethod, demand.notes || null, demand.iaRawText || null, demand.useIa ? 1 : 0, demand.coverPhoto || null, demand.status, demand.createdBy]
-    ).then(async () => {
-      if (pool && demand.neighborhoods) {
-        for (const n of demand.neighborhoods) {
-          await this.executeMySQLWrite("INSERT INTO demand_neighborhoods (demand_id, neighborhood) VALUES (?, ?)", [demand.id, n]);
-        }
+      [demand.id, demand.type, demand.purpose, demand.city, demand.maxPrice, demand.bedrooms, demand.parkingSpots, demand.minArea, demand.urgency, demand.paymentMethod, demand.notes || null, demand.iaRawText || null, demand.useIa, demand.coverPhoto || null, demand.status, demand.createdBy]
+    );
+
+    // Write neighborhoods
+    if (pool && demand.neighborhoods) {
+      for (const n of demand.neighborhoods) {
+        await this.executeMySQLWriteCritical(
+          "INSERT INTO demand_neighborhoods (demand_id, neighborhood) VALUES (?, ?)",
+          [demand.id, n]
+        );
       }
-    });
+    }
+
+    // Neon write succeeded — now update local cache
+    this.data.demands.push(demand);
+    this.saveLocal();
+    console.log(`[createDemand] Demand ${demand.id} created in Neon + cached locally`);
 
     return demand;
   }
@@ -1178,7 +1387,7 @@ export class OfflineDB {
         if (prop) {
           const brokerProp = this.getBroker(prop.createdBy);
           if (brokerProp) {
-            this.updateBroker(prop.createdBy, { 
+            this._updateBrokerLocal(prop.createdBy, { 
               closedDeals: (brokerProp.closedDeals || 0) + 1 
             });
           }
@@ -1186,7 +1395,7 @@ export class OfflineDB {
         if (dem) {
           const brokerDem = this.getBroker(dem.createdBy);
           if (brokerDem) {
-            this.updateBroker(dem.createdBy, { 
+            this._updateBrokerLocal(dem.createdBy, { 
               closedDeals: (brokerDem.closedDeals || 0) + 1 
             });
           }
@@ -1303,24 +1512,20 @@ export class OfflineDB {
         llmModelName: "openai/gpt-4o-mini",
         llmEndpointUrl: "https://openrouter.ai/api/v1/chat/completions",
         maxPhotosPerProperty: 5,
-        s3Url: "https://s3.subirei.com.br",
-        s3AccessKey: "BHfYHHqIaBjZjAewKoCJ",
-        s3SecretKey: "vLhG23YaHZ0QNCPjyVIeQwXhbqX5TELRJ0xJYqw1",
-        s3BucketName: "imob",
+        s3Url: process.env.S3_URL || "",
+        s3AccessKey: process.env.S3_ACCESS_KEY || "",
+        s3SecretKey: process.env.S3_SECRET_KEY || "",
+        s3BucketName: process.env.S3_BUCKET_NAME || "imob",
         apiKey: "",
         proximityRadius: 10,
         globalCatalogEnabled: false
       };
     } else {
-      // Backfill S3 credentials if missing in existing settings
       if (!this.data.settings.s3Url) {
-        this.data.settings.s3Url = "https://s3.subirei.com.br";
-        this.data.settings.s3AccessKey = "BHfYHHqIaBjZjAewKoCJ";
-        this.data.settings.s3SecretKey = "vLhG23YaHZ0QNCPjyVIeQwXhbqX5TELRJ0xJYqw1";
-        this.data.settings.s3BucketName = "imob";
-      } else if (this.data.settings.s3Url.includes("minio.subirei.com.br")) {
-        // Fix from wrong hostname (MinIO console) to S3 API endpoint
-        this.data.settings.s3Url = "https://s3.subirei.com.br";
+        this.data.settings.s3Url = process.env.S3_URL || "";
+        this.data.settings.s3AccessKey = process.env.S3_ACCESS_KEY || "";
+        this.data.settings.s3SecretKey = process.env.S3_SECRET_KEY || "";
+        this.data.settings.s3BucketName = process.env.S3_BUCKET_NAME || "imob";
       }
       // Backfill OpenRouter endpoint if still pointing to old Gemini URL
       if (this.data.settings.llmEndpointUrl === "https://api.google.com/gemini" || this.data.settings.llmEndpointUrl?.includes("/v1/models") || !this.data.settings.llmEndpointUrl) {

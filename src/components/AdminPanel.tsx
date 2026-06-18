@@ -80,7 +80,7 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
   const [reviewBroker, setReviewBroker] = useState<any | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [editBroker, setEditBroker] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", whatsapp: "", city: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", whatsapp: "", city: "", creci: "", status: "", password: "", photoUrl: "", specialties: "" });
   const [userSearch, setUserSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
   const USERS_PER_PAGE = 20;
@@ -329,7 +329,12 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
       email: broker.email || "",
       phone: broker.phone || "",
       whatsapp: broker.whatsapp || "",
-      city: broker.city || ""
+      city: broker.city || "",
+      creci: broker.creci || "",
+      status: broker.status || "Pendente",
+      password: "",
+      photoUrl: broker.photoUrl || "",
+      specialties: (broker.specialties || []).join(", ")
     });
   };
 
@@ -337,10 +342,24 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
     if (!editBroker) return;
     setIsActionLoading(true);
     try {
+      const payload: Record<string, any> = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        whatsapp: editForm.whatsapp,
+        city: editForm.city,
+        creci: editForm.creci,
+        status: editForm.status,
+        photoUrl: editForm.photoUrl,
+        specialties: editForm.specialties
+          ? editForm.specialties.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : []
+      };
+      if (editForm.password) payload.password = editForm.password;
       const res = await fetch(`/api/admin/brokers/${editBroker.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setEditBroker(null);
@@ -846,245 +865,9 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Side: Pending verification users */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border p-5 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5 border-b border-gray-100 pb-3">
-              <ShieldAlert className="h-5 w-5 text-purple-600" />
-              Solicitações de Verificação de CRECI
-            </h3>
-
-            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-              {brokers.filter(b => b.status === "Pendente").length === 0 ? (
-                <div className="text-center py-10 rounded-xl bg-slate-50 border border-slate-100">
-                  <p className="text-xs text-gray-400 font-medium">Não há solicitações pendentes de análise no momento!</p>
-                </div>
-              ) : (
-                brokers.filter(b => b.status === "Pendente").map((b) => (
-                  <div
-                    key={b.id}
-                    onClick={() => { setReviewBroker(b); setRejectionReason(""); }}
-                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
-                      reviewBroker?.id === b.id 
-                        ? "bg-purple-50/50 border-purple-200" 
-                        : "bg-white border-gray-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={b.photoUrl || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80"}
-                        alt={b.name}
-                        className="h-10 w-10 rounded-full object-cover shrink-0 border"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="text-sm font-bold text-gray-900 leading-tight truncate">{b.name}</p>
-                        <p className="text-[11px] text-gray-500 font-semibold">{b.creci} | {b.city}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={!!b.isAdmin}
-                          onChange={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const res = await fetch("/api/admin/toggle-admin", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ brokerId: b.id, isAdmin: e.target.checked })
-                              });
-                              if (res.ok) {
-                                const data = await res.json();
-                                setBrokers(prev => prev.map(bk => bk.id === data.broker.id ? data.broker : bk));
-                                onRefreshGlobalState();
-                              }
-                            } catch {}
-                          }}
-                          className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                        />
-                        <span className={`font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
-                      </label>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleVerifyAction(b.id, "Aprovar"); }}
-                        disabled={isActionLoading}
-                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
-                      >
-                        Aprovar
-                      </button>
-                      <span className="flex h-8 w-8 items-center justify-center text-purple-600 hover:bg-purple-100 rounded-lg">
-                        <ChevronRight className="h-5 w-5" />
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Full list of all registered users */}
-            <div className="flex items-center justify-between border-t border-gray-100 pt-5 pb-1">
-              <h3 className="text-base font-bold text-gray-900">Todos os Corretores ({brokers.length})</h3>
-              <button
-                onClick={fetchAdminData} // Chama a função para recarregar todos os dados
-                disabled={isActionLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-purple-700 hover:bg-purple-50 transition"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Atualizar Lista
-              </button>
-            </div>
-            <div className="space-y-2 mt-2 text-xs">
-              {brokers.map((b) => (
-                <div key={b.id} className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <img src={b.photoUrl || ""} alt="" className="h-7 w-7 rounded-full object-cover shrink-0 border" referrerPolicy="no-referrer" />
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-800 truncate">{b.name}</p>
-                      <p className="text-gray-400 truncate">{b.creci} | {b.city}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={!!b.isAdmin}
-                        onChange={async () => {
-                          try {
-                            const res = await fetch("/api/admin/toggle-admin", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ brokerId: b.id, isAdmin: !b.isAdmin })
-                            });
-                            if (res.ok) {
-                              const data = await res.json();
-                              setBrokers(prev => prev.map(bk => bk.id === data.broker.id ? data.broker : bk));
-                              onRefreshGlobalState();
-                            }
-                          } catch {}
-                        }}
-                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                      />
-                      <span className={`font-bold ${b.isAdmin ? "text-purple-700" : "text-gray-400"}`}>Admin</span>
-                    </label>
-                    {b.status === "Aprovado" ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Verificado</span>
-                        <button
-                          onClick={() => handleVerifyAction(b.id, "Recusar")}
-                          disabled={isActionLoading}
-                          className="rounded-lg border border-red-200 text-red-600 hover:bg-red-50 px-2.5 py-1 text-[10px] font-bold transition cursor-pointer disabled:opacity-50"
-                        >
-                          Suspender
-                        </button>
-                      </div>
-                    ) : b.status === "Rejeitado" || b.status === "Suspenso" ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">{b.status === "Rejeitado" ? "Recusado" : b.status}</span>
-                        <button
-                          onClick={() => handleVerifyAction(b.id, "Aprovar")}
-                          disabled={isActionLoading}
-                          className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-[10px] font-bold transition cursor-pointer disabled:opacity-50"
-                        >
-                          Reativar
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-200">{b.status}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right Side: Documents and Review actions */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border p-5 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3">
-              Análise Documental Detalhada
-            </h3>
-
-            {reviewBroker ? (
-              <div className="space-y-4 text-xs">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={reviewBroker.photoUrl}
-                    alt=""
-                    className="h-12 w-12 rounded-full object-cover shrink-0 border"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <h4 className="font-extrabold text-gray-900 text-sm">{reviewBroker.name}</h4>
-                    <p className="text-gray-500 font-bold">{reviewBroker.creci} | {reviewBroker.email}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="font-bold text-gray-400 uppercase tracking-widest text-[9px] block">Documento de Identidade</span>
-                  <div className="rounded-xl border border-slate-200 bg-slate-100 text-center py-6 flex flex-col items-center justify-center p-3">
-                    <span className="text-xs font-bold text-gray-700">Digitalização do Documento RG/CNH</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5 leading-normal">
-                      {reviewBroker.identDocUrl || "MOCK_IDENTITY_DOCUMENT_CARD.JPEG"}
-                    </p>
-                    <div className="mt-3 inline-flex bg-slate-800 text-white rounded-md px-3 py-1 text-[10px] font-semibold cursor-pointer">
-                      Visualizar em Alta Resolução
-                    </div>
-                  </div>
-
-                  <span className="font-bold text-gray-400 uppercase tracking-widest text-[9px] block">Cópia da carteira professional CRECI</span>
-                  <div className="rounded-xl border border-slate-200 bg-slate-100 text-center py-6 flex flex-col items-center justify-center p-3">
-                    <span className="text-xs font-bold text-gray-700">Digitalização da Carteira do Conselho</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5 leading-normal">
-                      {reviewBroker.creciDocUrl || "MOCK_CRECI_SUBMISSION.PDF"}
-                    </p>
-                    <div className="mt-3 inline-flex bg-slate-800 text-white rounded-md px-3 py-1 text-[10px] font-semibold cursor-pointer">
-                      Visualizar em Alta Resolução
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 pt-2">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Motivo de Recusa (Se recusar)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Foto tremida ou número ilegível do CRECI"
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    disabled={isActionLoading}
-                    onClick={() => handleVerifyAction(reviewBroker.id, "Recusar")}
-                    className="flex-1 rounded-xl border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 py-3 font-semibold text-xs cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <X className="h-4 w-4" />
-                    Recusar Registro
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isActionLoading}
-                    onClick={() => handleVerifyAction(reviewBroker.id, "Aprovar")}
-                    className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-3 font-semibold text-xs cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Check className="h-4 w-4" />
-                    Aprovar e Liberar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-20 text-gray-400 text-xs">
-                Selecione um corretor na lista lateral para carregar seus documentos profissionais cadastrados e avaliar o registro.
-              </div>
-            )}
-          </div>
         </div>
-      </div>)}
+      )}
+
 
       {/* ============================================================ */}
       {/* VIEW: DATABASE CONNECTIONS CONTROL PANEL                    */}
@@ -1815,51 +1598,155 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
       {/* Edit Broker Overlay */}
       {editBroker && (
         <div className="fixed inset-0 z-50 bg-black/30 dark:bg-black/60 flex items-center justify-center p-4" onClick={() => setEditBroker(null)}>
-          <div className="bg-white dark:bg-dark-card rounded-2xl border dark:border-dark-border shadow-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-dark-card rounded-2xl border dark:border-dark-border shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-gray-900 dark:text-dark-text">Editar Corretor</h3>
               <button onClick={() => setEditBroker(null)} className="text-gray-400 dark:text-dark-muted hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            {/* Photo Section */}
+            <div className="flex items-center gap-4 pb-2 border-b border-gray-100 dark:border-dark-border">
+              <div className="relative group">
+                <img
+                  src={editForm.photoUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
+                  alt="Foto"
+                  className="h-16 w-16 rounded-full object-cover border-2 border-purple-200 dark:border-purple-700"
+                  referrerPolicy="no-referrer"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = "image/*";
+                    input.onchange = async (ev: any) => {
+                      const file = ev.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = async () => {
+                          const base64 = reader.result as string;
+                          const res = await fetch("/api/upload", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ base64Data: base64, filename: file.name })
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setEditForm(f => ({ ...f, photoUrl: data.url }));
+                          } else {
+                            alert("Falha ao subir foto.");
+                          }
+                        };
+                      } catch {
+                        alert("Erro no upload da foto.");
+                      }
+                    };
+                    input.click();
+                  }}
+                  className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                >
+                  <Camera className="h-5 w-5 text-white" />
+                </button>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-900 dark:text-dark-text truncate">{editForm.name || "Sem nome"}</p>
+                <p className="text-[10px] text-gray-400 dark:text-dark-muted font-mono">{editBroker.id}</p>
+                <p className="text-[10px] text-gray-400 dark:text-dark-muted mt-0.5">Clique na foto para alterar</p>
+              </div>
+            </div>
+
             <div className="space-y-3">
+              {/* Row: Nome */}
               <div>
-                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Nome</label>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Nome Completo</label>
                 <input
                   type="text" value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
                 />
               </div>
+              {/* Row: Email + CRECI */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Email</label>
+                  <input
+                    type="email" value={editForm.email}
+                    onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">CRECI</label>
+                  <input
+                    type="text" value={editForm.creci}
+                    onChange={e => setEditForm(f => ({ ...f, creci: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              </div>
+              {/* Row: Telefone + WhatsApp */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Telefone</label>
+                  <input
+                    type="text" value={editForm.phone}
+                    onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">WhatsApp</label>
+                  <input
+                    type="text" value={editForm.whatsapp}
+                    onChange={e => setEditForm(f => ({ ...f, whatsapp: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+              </div>
+              {/* Row: Cidade + Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Cidade</label>
+                  <input
+                    type="text" value={editForm.city}
+                    onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Status</label>
+                  <select
+                    value={editForm.status}
+                    onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                    className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400 cursor-pointer"
+                  >
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovado">Aprovado</option>
+                    <option value="Rejeitado">Rejeitado</option>
+                    <option value="Congelado">Congelado</option>
+                  </select>
+                </div>
+              </div>
+              {/* Row: Especialidades */}
               <div>
-                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Email</label>
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Especialidades <span className="font-normal">(separadas por vírgula)</span></label>
                 <input
-                  type="email" value={editForm.email}
-                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  type="text" value={editForm.specialties}
+                  onChange={e => setEditForm(f => ({ ...f, specialties: e.target.value }))}
+                  placeholder="Alto Padrão, Lançamentos, Investimentos"
                   className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
                 />
               </div>
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Telefone</label>
+              {/* Row: Nova Senha */}
+              <div className="pt-2 border-t border-gray-100 dark:border-dark-border">
+                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Nova Senha <span className="font-normal">(deixe em branco para não alterar)</span></label>
                 <input
-                  type="text" value={editForm.phone}
-                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">WhatsApp</label>
-                <input
-                  type="text" value={editForm.whatsapp}
-                  onChange={e => setEditForm(f => ({ ...f, whatsapp: e.target.value }))}
-                  className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 dark:text-dark-muted block mb-1">Cidade</label>
-                <input
-                  type="text" value={editForm.city}
-                  onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                  type="password" value={editForm.password} placeholder="••••••••"
+                  onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
                   className="w-full border border-gray-200 dark:border-dark-border dark:bg-gray-800 dark:text-dark-text rounded-lg p-2.5 text-sm focus:outline-none focus:border-purple-400"
                 />
               </div>
@@ -1876,7 +1763,7 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                 disabled={isActionLoading}
                 className="flex-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white py-2.5 font-semibold text-xs cursor-pointer disabled:opacity-50"
               >
-                {isActionLoading ? "Salvando..." : "Salvar"}
+                {isActionLoading ? "Salvando..." : "Salvar Alterações"}
               </button>
             </div>
           </div>

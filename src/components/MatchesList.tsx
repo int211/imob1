@@ -32,12 +32,7 @@ export default function MatchesList({ matches, onRefresh, onStatusChange }: Matc
     setLoadingInsights(true);
     setMatchInsights(null);
     try {
-      const response = await fetch(`/api/matches/${matchId}/insights`, {
-        method: "GET",
-        headers: {
-          "x-user-id": localStorage.getItem("conectacorretor_user_id") || "admin-id"
-        }
-      });
+      const response = await fetch(`/api/matches/${matchId}/insights`);
       const data = await response.json();
       if (response.ok) {
         setMatchInsights(data);
