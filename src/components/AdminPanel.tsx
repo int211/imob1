@@ -551,13 +551,10 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
   }
 
   return (
-    <div className="space-y-8 dark:text-dark-text">
+    <div className="space-y-4 dark:text-dark-text overflow-x-hidden">
       {/* Metrics Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">Painel de Auditoria & Controle</h2>
-          <p className="text-xs text-gray-500 dark:text-dark-muted">Gestão de corretores, verificação de CRECI e controle do banco de dados Neon PostgreSQL.</p>
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-dark-text">Admin</h2>
 
         <div className="flex items-center gap-2">
         {/* Dark Mode Toggle */}
@@ -574,60 +571,56 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
         </button>
         
         {/* Toggle between tabs */}
-        <div className="inline-flex bg-[#e8e8ed] dark:bg-gray-700 p-0.5 rounded-full shrink-0 self-start md:self-auto font-sans">
+        <div className="inline-flex bg-[#e8e8ed] dark:bg-gray-700 p-0.5 rounded-full shrink-0 self-start md:self-auto font-sans flex-wrap gap-0.5">
           <button
             onClick={() => setActiveSubTab("moderation")}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
               activeSubTab === "moderation"
                 ? "bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-[#515154] hover:text-[#1d1d1f]"
             }`}
           >
-            Análise de CRECI
+            Corretores
           </button>
           <button
             onClick={() => setActiveSubTab("database")}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
               activeSubTab === "database"
                 ? "bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-[#515154] hover:text-[#1d1d1f]"
             }`}
           >
-            <Database className="h-3.5 w-3.5" />
-            Neon PostgreSQL Status
+            Banco
           </button>
           <button
             onClick={() => setActiveSubTab("config")}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
               activeSubTab === "config"
                 ? "bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-[#515154] hover:text-[#1d1d1f]"
             }`}
           >
-            <Settings className="h-3.5 w-3.5" />
-            Configurações & LLM
+            Config
           </button>
           <button
             onClick={() => setActiveSubTab("properties")}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
               activeSubTab === "properties"
                 ? "bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-[#515154] hover:text-[#1d1d1f]"
             }`}
           >
-            <BookOpen className="h-3.5 w-3.5" />
-            Imóveis & Fotos
+            Imóveis
           </button>
           <button
             onClick={() => setActiveSubTab("locations")}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-full font-bold text-[11px] transition-all cursor-pointer ${
               activeSubTab === "locations"
                 ? "bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
                 : "text-[#515154] hover:text-[#1d1d1f]"
             }`}
           >
-            <MapPin className="h-3.5 w-3.5" />
-            Localidades
+            Cidades
           </button>
         </div>
         </div>
@@ -707,36 +700,34 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto -mx-2">
+              <table className="w-full text-xs min-w-0">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-dark-border text-[10px] uppercase font-bold text-gray-400 dark:text-dark-muted tracking-wider">
-                    <th className="text-left p-2">Nome</th>
-                    <th className="text-left p-2">Email</th>
-                    <th className="text-left p-2">WhatsApp</th>
-                    <th className="text-left p-2">CRECI</th>
-                    <th className="text-left p-2">Cidade</th>
-                    <th className="text-center p-2">Status</th>
-                    <th className="text-center p-2">Admin</th>
-                    <th className="text-right p-2">Ações</th>
+                    <th className="text-left p-1.5">Nome</th>
+                    <th className="text-left p-1.5 hidden md:table-cell">Email</th>
+                    <th className="text-left p-1.5 hidden lg:table-cell">CRECI</th>
+                    <th className="text-left p-1.5">Cidade</th>
+                    <th className="text-center p-1.5">Status</th>
+                    <th className="text-center p-1.5">Admin</th>
+                    <th className="text-right p-1.5">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedBrokers.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-8 text-gray-400">{userSearch ? "Nenhum resultado para esta busca" : "Nenhum corretor cadastrado"}</td></tr>
+                    <tr><td colSpan={7} className="text-center py-8 text-gray-400">{userSearch ? "Nenhum resultado para esta busca" : "Nenhum corretor cadastrado"}</td></tr>
                   ) : (
                     pagedBrokers.map((b, i) => (
                       <tr key={b.id} className={`${i % 2 === 0 ? 'bg-white dark:bg-dark-card' : 'bg-slate-50/60 dark:bg-gray-800/50'} border-b border-slate-100 dark:border-dark-border hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors`}>
-                        <td className="p-2">
+                        <td className="p-1.5">
                           <div className="flex items-center gap-2">
                             <img src={b.photoUrl || ""} alt="" className="h-6 w-6 rounded-full object-cover shrink-0 border" referrerPolicy="no-referrer" />
-                            <span className="font-semibold text-gray-800 dark:text-dark-text truncate max-w-[120px]">{b.name}</span>
+                            <span className="font-semibold text-gray-800 dark:text-dark-text truncate max-w-[100px]">{b.name}</span>
                           </div>
                         </td>
-                        <td className="p-2 text-gray-500 dark:text-dark-muted">{b.email}</td>
-                        <td className="p-2 text-gray-500 dark:text-dark-muted font-mono text-[10px]">{b.whatsapp || "-"}</td>
-                        <td className="p-2 text-gray-600 dark:text-dark-muted">{b.creci || "-"}</td>
-                        <td className="p-2 text-gray-600 dark:text-dark-muted">{b.city}</td>
+                        <td className="p-1.5 text-gray-500 dark:text-dark-muted truncate max-w-[150px] hidden md:table-cell">{b.email}</td>
+                        <td className="p-1.5 text-gray-600 dark:text-dark-muted hidden lg:table-cell">{b.creci || "-"}</td>
+                        <td className="p-1.5 text-gray-600 dark:text-dark-muted">{b.city}</td>
                         <td className="p-2 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
                             b.status === "Aprovado" ? "bg-emerald-100 text-emerald-700" :
@@ -747,7 +738,7 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                             {b.status}
                           </span>
                         </td>
-                        <td className="p-2 text-center">
+                        <td className="p-1.5 text-center">
                           <label className="inline-flex items-center cursor-pointer">
                             <input
                               type="checkbox"
@@ -770,7 +761,7 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
                             />
                           </label>
                         </td>
-                        <td className="p-2 text-right">
+                        <td className="p-1.5 text-right">
                           <div className="flex items-center justify-end gap-1">
                             {b.status === "Pendente" && (
                               <button
@@ -981,50 +972,50 @@ export default function AdminPanel({ activeBroker, onRefreshGlobalState, onSelec
               <table className="w-full text-left text-xs text-gray-500">
                 <thead className="text-[10px] uppercase tracking-wider text-gray-400 bg-slate-50 rounded-lg">
                   <tr>
-                    <th className="px-4 py-3 font-semibold rounded-l-lg">Estrutura / Entidade</th>
-                    <th className="px-4 py-3 font-semibold">Tabela PostgreSQL</th>
-                    <th className="px-4 py-3 font-semibold text-center">Registros Cache (Front-End/Memory)</th>
-                    <th className="px-4 py-3 font-semibold text-center rounded-r-lg">Registros Fisícos na VPS</th>
+                    <th className="px-3 py-2 font-semibold rounded-l-lg">Entidade</th>
+                    <th className="px-3 py-2 font-semibold hidden md:table-cell">Tabela</th>
+                    <th className="px-3 py-2 font-semibold text-center">Cache</th>
+                    <th className="px-3 py-2 font-semibold text-center rounded-r-lg">Neon</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   <tr>
-                    <td className="px-4 py-3 text-purple-700 font-bold">Corretores Cadastrados</td>
-                    <td className="px-4 py-3 font-mono">corretores</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.brokers || 0}</td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-600">
+                    <td className="px-3 py-2 text-purple-700 font-bold text-[11px]">Corretores Cadastrados</td>
+                    <td className="px-3 py-2 font-mono text-[10px] hidden md:table-cell">corretores</td>
+                    <td className="px-3 py-2 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.brokers || 0}</td>
+                    <td className="px-3 py-2 text-center font-bold text-purple-600">
                       {dbStatusData?.status?.connected ? (dbStatusData?.liveCounts?.brokers ?? "0") : "Offline"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-purple-700 font-bold">Anúncios (Ofertas)</td>
-                    <td className="px-4 py-3 font-mono">properties</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.properties || 0}</td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-600">
+                    <td className="px-3 py-2 text-purple-700 font-bold text-[11px]">Anúncios (Ofertas)</td>
+                    <td className="px-3 py-2 font-mono text-[10px] hidden md:table-cell">properties</td>
+                    <td className="px-3 py-2 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.properties || 0}</td>
+                    <td className="px-3 py-2 text-center font-bold text-purple-600">
                       {dbStatusData?.status?.connected ? (dbStatusData?.liveCounts?.properties ?? "0") : "Offline"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-purple-700 font-bold">Procuras (Demandas)</td>
-                    <td className="px-4 py-3 font-mono">demands</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.demands || 0}</td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-600">
+                    <td className="px-3 py-2 text-purple-700 font-bold text-[11px]">Procuras (Demandas)</td>
+                    <td className="px-3 py-2 font-mono text-[10px] hidden md:table-cell">demands</td>
+                    <td className="px-3 py-2 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.demands || 0}</td>
+                    <td className="px-3 py-2 text-center font-bold text-purple-600">
                       {dbStatusData?.status?.connected ? (dbStatusData?.liveCounts?.demands ?? "0") : "Offline"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-purple-700 font-bold">Partilhas / Matches</td>
-                    <td className="px-4 py-3 font-mono">matches</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.matches || 0}</td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-600">
+                    <td className="px-3 py-2 text-purple-700 font-bold text-[11px]">Partilhas / Matches</td>
+                    <td className="px-3 py-2 font-mono text-[10px] hidden md:table-cell">matches</td>
+                    <td className="px-3 py-2 text-center font-bold text-gray-900">{dbStatusData?.memoryCounts?.matches || 0}</td>
+                    <td className="px-3 py-2 text-center font-bold text-purple-600">
                       {dbStatusData?.status?.connected ? (dbStatusData?.liveCounts?.matches ?? "0") : "Offline"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-purple-700 font-bold">Avaliações Adicionais</td>
-                    <td className="px-4 py-3 font-mono">ratings</td>
+                    <td className="px-3 py-2 text-purple-700 font-bold text-[11px]">Avaliações Adicionais</td>
+                    <td className="px-3 py-2 font-mono text-[10px] hidden md:table-cell">ratings</td>
                     <td className="px-4 py-3 text-center text-gray-400">—</td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-600">
+                    <td className="px-3 py-2 text-center font-bold text-purple-600">
                       {dbStatusData?.status?.connected ? (dbStatusData?.liveCounts?.ratings ?? "0") : "Offline"}
                     </td>
                   </tr>

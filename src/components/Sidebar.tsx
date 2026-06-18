@@ -157,7 +157,7 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
             {!collapsed && <span className="px-4 text-[9px] font-bold text-[#86868b] dark:text-dark-muted uppercase tracking-widest block mb-2">Administração</span>}
             <button
               onClick={() => { setActiveTab("admin"); onClose(); }}
-              title={collapsed ? "Painel de Verificações" : undefined}
+              title={collapsed ? "Admin" : undefined}
               className={`flex w-full items-center ${collapsed ? 'justify-center' : 'gap-3'} rounded-lg ${collapsed ? 'px-0 py-2.5' : 'px-3.5 py-2.5'} text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 activeTab === "admin"
                   ? "bg-[#0071e3] text-white shadow-none"
@@ -165,7 +165,7 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
               }`}
             >
               <ShieldAlert className={`${collapsed ? 'h-5 w-5' : 'h-4.5 w-4.5'} shrink-0`} />
-              {!collapsed && <span>Painel de Verificações</span>}
+              {!collapsed && <span>Admin</span>}
             </button>
           </div>
         )}
