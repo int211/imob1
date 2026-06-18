@@ -126,6 +126,12 @@ export async function createApp() {
     res.json({ success: true });
   });
 
+  // Debug endpoint (temporary)
+  app.get("/api/debug/state", async (_req, res) => {
+    const brokers = (await db.fetchBrokersFromMySQL()).map(b => ({ id: b.id, email: b.email, isAdmin: b.isAdmin }));
+    res.json({ count: brokers.length, brokers, dbStatus });
+  });
+
   // Public settings (no auth needed for frontend bootstrap)
   app.get("/api/settings", (_req, res) => {
     try {
