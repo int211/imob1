@@ -128,8 +128,17 @@ export async function createApp() {
 
   // Debug endpoint (temporary)
   app.get("/api/debug/state", async (_req, res) => {
-    const brokers = (await db.fetchBrokersFromMySQL()).map(b => ({ id: b.id, email: b.email, isAdmin: b.isAdmin }));
-    res.json({ count: brokers.length, brokers, dbStatus });
+    const neon = (await db.fetchBrokersFromMySQL()).map(b => ({ id: b.id, email: b.email, isAdmin: b.isAdmin }));
+    const mem = db.getBrokerByEmail("celso@corretor.com.br");
+    const mem2 = db.getBrokerByEmail("renato@corretor.com.br");
+    const settings = db.getSettings();
+    res.json({
+      neonBrokers: neon,
+      memCelso: mem ? { id: mem.id, email: mem.email, isAdmin: mem.isAdmin } : null,
+      memRenato: mem2 ? { id: mem2.id, email: mem2.email, isAdmin: mem2.isAdmin } : null,
+      geminiApiKey: settings.geminiApiKey ? "SET" : "EMPTY",
+      dbStatus
+    });
   });
 
   // Public settings (no auth needed for frontend bootstrap)
