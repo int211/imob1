@@ -73,9 +73,9 @@ export default function Sidebar({ activeTab, setActiveTab, broker, unreadNotific
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-extrabold text-[#1d1d1f] leading-tight">{broker.name}</p>
+              <p className="truncate text-xs font-extrabold text-[#1d1d1f] dark:text-white leading-tight">{broker.name}</p>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-[10px] font-medium text-[#86868b] truncate">{broker.creci}</span>
+                <span className="text-[10px] font-medium text-[#86868b] dark:text-gray-400 truncate">{broker.creci}</span>
                 {broker.status === "Aprovado" ? (
                   <CheckCircle className="h-3 w-3 text-[#0071e3] shrink-0" />
                 ) : broker.status === "Pendente" ? (
