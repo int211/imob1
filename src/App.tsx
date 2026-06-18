@@ -247,7 +247,8 @@ export default function App() {
   const [feedFilter, setFeedFilter] = useState<"tudo" | "ofertas" | "demandas">("tudo");
   const [cityFilter, setCityFilter] = useState<string>("todas");
   const [typeFilter, setTypeFilter] = useState<string>("todos");
-  const [gridCols, setGridCols] = useState<2 | 3 | 4>(4);
+  const [gridCols, setGridCols] = useState<2 | 3 | 4>(2);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
 
   // Filters for global catalog
@@ -601,20 +602,22 @@ export default function App() {
     <div className="min-h-screen bg-[#f5f5f7] dark:bg-dark-bg text-[#1d1d1f] dark:text-dark-text antialiased font-sans flex font-normal leading-relaxed">
       
       {/* Sidebar navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        broker={activeBroker} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        broker={activeBroker}
         unreadNotificationsCount={unreadNotifications.length}
         matchesCount={matches.filter(m => m.status !== "Perdido").length}
         onLogout={handleLogout}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         globalCatalogEnabled={globalCatalogEnabled}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
       />
 
       {/* Main Panel Frame */}
-      <main className="flex-1 md:pl-64 min-h-screen pb-16 md:pb-0">
+      <main className={`flex-1 min-h-screen pb-16 md:pb-0 transition-all duration-300 ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         
         {/* Global sticky bar */}
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-[#e8e8ed] dark:border-dark-border bg-white/80 dark:bg-dark-card/80 backdrop-blur-md px-4 md:px-8">
