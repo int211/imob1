@@ -109,8 +109,7 @@ export class OfflineDB {
       try {
         await this.syncFromMySQL();
       } catch (err: any) {
-        console.error("Failed to sync from MySQL tables. Bootstrapping seeding to MySQL instead...", err.message);
-        await this.seedToMySQL();
+        console.error("[bootstrap] syncFromMySQL failed — keeping local seed data. NEVER overwriting Neon.", err.message);
       }
       await this.syncPasswordsFromNeon();
       await this.syncSettingsFromNeon();
@@ -1542,7 +1541,7 @@ export class OfflineDB {
     return this.data.settings;
   }
 
-  public updateSettings(updates: Partial<SystemSettings>): SystemSettings {
+  public async updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
     const current = this.getSettings();
     const filtered: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
@@ -1556,7 +1555,7 @@ export class OfflineDB {
       process.env.LLM_API_KEY = updated.geminiApiKey;
     }
 
-    this.syncSettingsToNeon();
+    await this.syncSettingsToNeon();
 
     return updated;
   }

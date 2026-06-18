@@ -126,21 +126,6 @@ export async function createApp() {
     res.json({ success: true });
   });
 
-  // Debug endpoint (temporary)
-  app.get("/api/debug/state", async (_req, res) => {
-    const neon = (await db.fetchBrokersFromMySQL()).map(b => ({ id: b.id, email: b.email, isAdmin: b.isAdmin }));
-    const mem = db.getBrokerByEmail("celso@corretor.com.br");
-    const mem2 = db.getBrokerByEmail("renato@corretor.com.br");
-    const settings = db.getSettings();
-    res.json({
-      neonBrokers: neon,
-      memCelso: mem ? { id: mem.id, email: mem.email, isAdmin: mem.isAdmin } : null,
-      memRenato: mem2 ? { id: mem2.id, email: mem2.email, isAdmin: mem2.isAdmin } : null,
-      geminiApiKey: settings.geminiApiKey ? "SET" : "EMPTY",
-      dbStatus
-    });
-  });
-
   // Public settings (no auth needed for frontend bootstrap)
   app.get("/api/settings", (_req, res) => {
     try {
@@ -948,10 +933,10 @@ export async function createApp() {
     }
   });
 
-  app.post("/api/admin/settings", (req, res) => {
+  app.post("/api/admin/settings", async (req, res) => {
     try {
       const { geminiApiKey, llmModelName, llmEndpointUrl, maxPhotosPerProperty, s3Url, s3AccessKey, s3SecretKey, s3BucketName, apiKey, proximityRadius, globalCatalogEnabled } = req.body;
-      const updated = db.updateSettings({
+      const updated = await db.updateSettings({
         geminiApiKey,
         llmModelName,
         llmEndpointUrl,
