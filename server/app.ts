@@ -2,7 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { interpretDemand, getMatchInsights, optimizeListing, testConnection, listModels } from "./openrouter.js";
+import { interpretDemand, getMatchInsights, optimizeListing, testConnection, listModels, importListingFromUrl } from "./openrouter.js";
 import { calculateAllNetworkMatches, triggerMatchCalculationForProperty, triggerMatchCalculationForDemand } from "./matcher.js";
 import { Corretor, Property, Demand, Match, Notification, Rating, Favorite } from "../src/types.js";
 import { authMiddleware, adminMiddleware, setAuthCookie, clearAuthCookie, AuthPayload } from "./auth.js";
@@ -279,6 +279,18 @@ export async function createApp() {
     try {
       res.json(db.getProperties());
     } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/properties/import-url", async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) return res.status(400).json({ error: "URL é obrigatória." });
+      const data = await importListingFromUrl(url);
+      res.json(data);
+    } catch (err: any) {
+      console.error("[import-url] error:", err.message);
       res.status(500).json({ error: err.message });
     }
   });

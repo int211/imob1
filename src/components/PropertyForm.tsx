@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sparkles, Loader2, Plus, X, ListPlus, Wand2, Lightbulb, Image as ImageIcon } from "lucide-react";
+import { Sparkles, Loader2, Plus, X, ListPlus, Wand2, Lightbulb, Image as ImageIcon, Link, Import } from "lucide-react";
 import { Property, PropertyType, PurposeType, City } from "../types";
 import MarkdownText from "./MarkdownText";
 
@@ -171,6 +171,48 @@ export default function PropertyForm({ onSuccess, onCancel, cities, editProperty
   const [savingLoading, setSavingLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Import from URL
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+
+  const handleImportFromUrl = async () => {
+    if (!importUrl.trim()) return;
+    setIsImporting(true);
+    setImportError("");
+    try {
+      const res = await fetch("/api/properties/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: importUrl.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao importar");
+
+      if (data.title) setTitle(data.title);
+      if (data.type) setType(data.type as PropertyType);
+      if (data.purpose) setPurpose(data.purpose as PurposeType);
+      if (data.price) setPrice(String(data.price));
+      if (data.city) setCity(data.city);
+      if (data.neighborhood) setNeighborhood(data.neighborhood);
+      if (data.description) setDescription(data.description);
+      if (data.bedrooms) setBedrooms(String(data.bedrooms));
+      if (data.bathrooms) setBathrooms(String(data.bathrooms));
+      if (data.parkingSpots) setParkingSpots(String(data.parkingSpots));
+      if (data.area) setArea(String(data.area));
+      if (data.features?.length) setFeatures(data.features);
+      if (data.photos?.length) setPhotos(data.photos);
+
+      setShowImportModal(false);
+      setImportUrl("");
+    } catch (err: any) {
+      setImportError(err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // Add customized feature
   const handleAddFeature = (f: string) => {
     const fn = f.trim().toLowerCase();
@@ -291,13 +333,94 @@ export default function PropertyForm({ onSuccess, onCancel, cities, editProperty
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-text">{editProperty ? "Editar Imóvel" : "Cadastrar Novo Imóvel"}</h2>
           <p className="text-sm text-gray-500 dark:text-dark-muted">{editProperty ? "Altere os dados do seu imóvel." : "Divulgue suas captações nas cidades de atuação primárias e permita matches."}</p>
         </div>
-        <button
-          onClick={onCancel}
-          className="rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card px-4 py-2 text-sm font-semibold text-gray-700 dark:text-dark-text shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800"
-        >
-          Cancelar
-        </button>
+        <div className="flex items-center gap-2">
+          {!editProperty && (
+            <button
+              type="button"
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#0071e3] bg-[#0071e3]/5 px-4 py-2 text-sm font-semibold text-[#0071e3] shadow-sm hover:bg-[#0071e3]/10 transition cursor-pointer"
+            >
+              <Import className="h-4 w-4" />
+              Importar Anúncio
+            </button>
+          )}
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-gray-300 dark:border-dark-border bg-white dark:bg-dark-card px-4 py-2 text-sm font-semibold text-gray-700 dark:text-dark-text shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
+
+      {/* Import from URL Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl border border-gray-200 dark:border-dark-border w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-dark-text flex items-center gap-2">
+                <Import className="h-5 w-5 text-[#0071e3]" />
+                Importar Anúncio de URL
+              </h3>
+              <button onClick={() => { setShowImportModal(false); setImportError(""); }} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-dark-muted">
+              Cole o link de um anúncio de qualquer plataforma (OLX, ZAP, VivaReal, etc.) e a IA extrairá automaticamente todos os dados e fotos.
+            </p>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 dark:text-dark-text uppercase tracking-wider mb-1.5">URL do Anúncio</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="url"
+                    placeholder="https://www.olx.com.br/imoveis/..."
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleImportFromUrl()}
+                    className="w-full rounded-xl border border-gray-300 dark:border-dark-border pl-10 pr-4 py-3 text-sm shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-dark-text"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+            {importError && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 border border-red-200 dark:border-red-800">
+                <p className="text-xs text-red-700 dark:text-red-400 font-medium">{importError}</p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { setShowImportModal(false); setImportError(""); }}
+                className="px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-dark-muted hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleImportFromUrl}
+                disabled={isImporting || !importUrl.trim()}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-[#0071e3] hover:bg-[#0066cc] rounded-lg shadow-sm transition disabled:opacity-50 cursor-pointer"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importando com IA...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Importar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">

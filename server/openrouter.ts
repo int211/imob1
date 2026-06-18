@@ -362,3 +362,114 @@ export async function listModels(overrideKey?: string): Promise<{ id: string; na
   console.log(`[listModels] Mapped ${models.length} models`);
   return models;
 }
+
+// 6. Import property listing from URL via LLM extraction
+export async function importListingFromUrl(url: string): Promise<{
+  title: string;
+  type: string;
+  purpose: string;
+  price: number;
+  city: string;
+  neighborhood: string;
+  description: string;
+  bedrooms: number;
+  bathrooms: number;
+  parkingSpots: number;
+  area: number;
+  features: string[];
+  photos: string[];
+}> {
+  const settings = db.getSettings();
+  const apiKey = settings.geminiApiKey || process.env.LLM_API_KEY || "";
+  if (!apiKey) {
+    throw new Error("Chave de API do LLM não configurada. Configure no Painel Admin > Inteligência Artificial.");
+  }
+
+  console.log(`[import] Fetching URL: ${url}`);
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "pt-BR,pt;q=0.9"
+    },
+    redirect: "follow"
+  });
+
+  if (!res.ok) {
+    throw new Error(`Não foi possível acessar a URL (HTTP ${res.status}). Verifique se o link está correto.`);
+  }
+
+  let html = await res.text();
+
+  // Strip scripts, styles, SVGs to reduce token count
+  html = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+  html = html.replace(/<style[\s\S]*?<\/style>/gi, "");
+  html = html.replace(/<svg[\s\S]*?<\/svg>/gi, "");
+  html = html.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+  html = html.replace(/<footer[\s\S]*?<\/footer>/gi, "");
+  html = html.replace(/<nav[\s\S]*?<\/nav>/gi, "");
+  html = html.replace(/<!--[\s\S]*?-->/g, "");
+  // Collapse whitespace
+  html = html.replace(/\s+/g, " ");
+
+  // Truncate to ~30k chars to fit LLM context
+  if (html.length > 30000) {
+    html = html.substring(0, 30000);
+  }
+
+  console.log(`[import] HTML cleaned: ${html.length} chars, sending to LLM...`);
+
+  const prompt = `Você é um sistema de extração de dados imobiliários. Analise o HTML de um anúncio de imóvel e extraia TODOS os dados estruturados.
+
+URL original: ${url}
+
+HTML do anúncio (pode estar truncado):
+${html}
+
+Extraia e retorne um JSON com exatamente estes campos:
+{
+  "title": "título do anúncio (string)",
+  "type": "apartamento|casa|terreno|cobertura|comercial|outro (string lowercase)",
+  "purpose": "venda|aluguel (string lowercase, baseado no contexto)",
+  "price": 0 (número inteiro em reais, sem centavos),
+  "city": "nome da cidade (string)",
+  "neighborhood": "nome do bairro (string)",
+  "description": "descrição completa do imóvel com detalhes relevantes (string, máximo 500 palavras)",
+  "bedrooms": 0 (número inteiro),
+  "bathrooms": 0 (número inteiro),
+  "parkingSpots": 0 (número inteiro de vagas de garagem),
+  "area": 0 (número, área em m²),
+  "features": ["lista de diferenciais como piscina, churrasqueira, etc"],
+  "photos": ["URLs absolutas das fotos do imóvel encontradas no HTML"]
+}
+
+REGRAS:
+- Para fotos, extraia URLs de imagens que pareçam fotos do imóvel (não logos, ícones ou avatares). Priorize imagens grandes (src, data-src, srcset).
+- Se um campo não puder ser determinado, use valor padrão (0 para números, "" para strings, [] para arrays).
+- O preço deve ser um número inteiro (ex: 500000 para R$ 500.000).
+- Retorne APENAS o JSON, sem markdown ou texto adicional.`;
+
+  const text = await callLLM(
+    "Você é um extrator de dados que retorna apenas JSON válido. Nunca inclua explicações, apenas o objeto JSON.",
+    prompt
+  );
+
+  const cleanJson = text.replace(/```json|```/g, "").trim();
+  const data = JSON.parse(cleanJson);
+
+  return {
+    title: data.title || "",
+    type: data.type || "apartamento",
+    purpose: data.purpose || "venda",
+    price: Number(data.price) || 0,
+    city: data.city || "",
+    neighborhood: data.neighborhood || "",
+    description: data.description || "",
+    bedrooms: Number(data.bedrooms) || 0,
+    bathrooms: Number(data.bathrooms) || 0,
+    parkingSpots: Number(data.parkingSpots) || 0,
+    area: Number(data.area) || 0,
+    features: Array.isArray(data.features) ? data.features : [],
+    photos: Array.isArray(data.photos) ? data.photos.filter((u: string) => u && u.startsWith("http")) : []
+  };
+}
